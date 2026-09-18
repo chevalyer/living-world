@@ -35,6 +35,10 @@ try
     var summary=new
     {
         seed=session.State.Seed, ticks, simulation_tick=session.State.Clock.Tick, date=session.State.Clock.Now, population=session.State.Population, entities=session.State.Entities.Count, rooms=session.State.Rooms.Count, settlement=SettlementAnalyzer.Describe(session), generation_ms=generated, simulation_ms=timer.Elapsed.TotalMilliseconds, hash=saves.Hash(session),
+        facilities=session.State.Entities.Store<FacilityComponent>().Count,
+        facility_counts=session.State.Entities.Store<FacilityComponent>().All
+            .GroupBy(x=>x.Value.Definition).OrderBy(x=>x.Key,StringComparer.Ordinal)
+            .ToDictionary(g=>g.Key,g=>g.Count()),
         action_failures=session.State.Entities.Store<DecisionComponent>().All.Sum(x=>x.Value.Failures),
         failure_reasons=session.FailureReasons.OrderByDescending(x=>x.Value).ToDictionary(x=>x.Key,x=>x.Value),
         failure_actions=session.FailureActions.OrderByDescending(x=>x.Value).ToDictionary(x=>x.Key,x=>x.Value),
