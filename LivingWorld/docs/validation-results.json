@@ -1,20 +1,22 @@
 {
-  "environment": {
-    "dotnet_sdk": "8.0.415",
-    "dotnet_runtime": "8.0.21",
-    "godot": "4.5 stable mono",
-    "platform": "Linux"
+  "version": "0.6.0-alpha",
+  "ci": {
+    "provider": "GitHub Actions",
+    "run_id": 35322747404,
+    "platform": "ubuntu-latest",
+    "status": "passed"
   },
-  "game_build": {
-    "status": "passed",
-    "configuration": "Debug, optimized simulation kernel",
-    "warnings": 0,
-    "errors": 0
+  "environment": {
+    "dotnet": "8.0.x via actions/setup-dotnet",
+    "godot": "4.7.1 stable mono"
+  },
+  "build": {
+    "release": "passed",
+    "godot_debug": "passed"
   },
   "regression": {
     "status": "passed",
-    "configuration": "Release",
-    "passed": 54,
+    "passed": 59,
     "failed": 0,
     "cases": [
       "definition references",
@@ -51,6 +53,11 @@
       "closed roofed walls form a room",
       "opening wall invalidates room",
       "communal stock retains physical ownership",
+      "settlement analyzer groups nearby homes deterministically",
+      "settlement analyzer separates distant homes",
+      "unhomed resident belongs to only one nearby settlement",
+      "render snapshot exposes immutable settlement data",
+      "separate save paths do not overwrite each other",
       "save resumes exact future state",
       "future save version rejected",
       "unknown component does not instantiate types",
@@ -74,84 +81,44 @@
     ]
   },
   "structural": {
-    "structural_checks": 518,
+    "structural_checks": 479,
     "structural_status": "passed",
     "csharp_files": 161,
     "actions": 32,
     "component_ids": 25,
-    "regression_cases_authored": 54,
-    "csharp_compilation": "not_part_of_structural_check",
-    "regression_execution": "not_part_of_structural_check",
-    "godot_visual_qa": "not_part_of_structural_check",
+    "regression_cases_authored": 59,
     "errors": []
   },
-  "godot_headless": {
-    "status": "passed",
+  "headless_smoke": {
     "seed": 1847,
-    "size": 128,
-    "starting_people": 14,
-    "save_load": "passed",
-    "measurements": [
-      {
-        "label": "near_1",
-        "tps": 24.016332707329834,
-        "days_per_second": 0.01667800882453461,
-        "lod": 0,
-        "visible_chunks": 9,
-        "visible_objects": 425,
-        "population": 14,
-        "simulated_people": 14
-      },
-      {
-        "label": "near_32",
-        "tps": 771.5981002695063,
-        "days_per_second": 0.5358320140760461,
-        "lod": 0,
-        "visible_chunks": 9,
-        "visible_objects": 610,
-        "population": 14,
-        "simulated_people": 14
-      },
-      {
-        "label": "far_32",
-        "tps": 771.1473362742854,
-        "days_per_second": 0.5355189835238093,
-        "lod": 2,
-        "visible_chunks": 64,
-        "visible_objects": 14,
-        "population": 14,
-        "simulated_people": 14
-      },
-      {
-        "label": "offscreen_32",
-        "tps": 782.4667353579831,
-        "days_per_second": 0.5433796773319327,
-        "lod": 0,
-        "visible_chunks": 0,
-        "visible_objects": 0,
-        "population": 14,
-        "simulated_people": 14
-      }
-    ],
-    "gpu_fps": "not_measured"
+    "size": 96,
+    "starting_people": 8,
+    "ticks": 1440,
+    "simulation_tick": 1440,
+    "population": 8,
+    "rooms": 0,
+    "simulation_ms": 3406.7978,
+    "hash": "250282DD3AF98A073937F365502548082029D2DF14CCA8EB53BC53E66913DF9C"
   },
   "core_week": {
     "seed": 1847,
+    "size": 128,
+    "starting_people": 14,
     "ticks": 10080,
     "simulation_tick": 10080,
     "population": 14,
     "rooms": 5,
-    "simulation_ms": 13197.6376,
-    "hash": "78645EC4774143516DE9F1E91B86A60EC28CBD0CBFDC476742CCA934305522E0",
-    "size": 128,
-    "ticks_per_second": 763.773055868726
+    "simulation_ms": 14598.061,
+    "hash": "DF00F533415698F8BE7DD7D12EEE0AA03A85C97D169BE479FCED075F1415F907"
+  },
+  "godot_headless_scene": {
+    "status": "passed",
+    "version": "4.7.1 stable mono",
+    "quit_after_frames": 300,
+    "suspicious_runtime_errors": 0
   },
   "visual_windowed_qa": {
     "status": "not_run",
-    "reason": "Window server could not start in this environment."
-  },
-  "limits": [
-    "Single default map; performance depends on hardware and world complexity.",
-    "Long-term population balance and large settlements were not benchmarked."
-  ]
+    "reason": "Automated CI is headless; visual appearance requires a normal windowed run."
+  }
 }
