@@ -18,10 +18,13 @@ public sealed class PlanningContext
     public RelationshipComponent Relationships { get; init; } = new();
     public SkillsComponent Skills { get; init; } = new();
     public float Air { get; init; }
+    public float OutdoorAir { get; init; }
     public float Temperature { get; init; }
     public float Insulation { get; init; }
     public bool Sheltered { get; init; }
+    public int Room { get; init; }
     public GridPoint? BuildSite { get; init; }
+    public GridPoint? SowSite { get; init; }
     public bool SocialReady { get; init; }
     public float MaxMass { get; init; } = 28;
     public float MaxVolume { get; init; } = 40;
@@ -35,14 +38,19 @@ public sealed class PlanningContext
         };
         state.Facts["capacity.mass"]=(int)MathF.Floor((MaxMass-Inventory.Sum(x=>Definitions.Items[x.Item.Definition].Mass))*1000);
         state.Facts["capacity.volume"]=(int)MathF.Floor((MaxVolume-Inventory.Sum(x=>Definitions.Items[x.Item.Definition].Volume))*1000);
+        var reserve=0;
         foreach (var (_, item) in Inventory)
         {
-            var key=ItemFact(item.Definition);
-            if (Definitions.Items[item.Definition].Calories<=0||item.Freshness>=.1f)state.Facts[key]=state.Get(key)+1;
-            foreach (var tool in Definitions.Items[item.Definition].Tools)if (item.Durability>0)state.Facts["tool:"+tool.Key]=1;
+            var definition=Definitions.Items[item.Definition];
+            var usable=definition.Calories<=0||item.Freshness>=.1f;
+            if (usable)state.Facts[ItemFact(item.Definition)]=state.Get(ItemFact(item.Definition))+1;
+            if (definition.Calories>0&&item.Freshness>=.1f)reserve+=(int)MathF.Round(definition.Calories*item.Freshness);
+            foreach (var tool in definition.Tools)if (item.Durability>0)state.Facts["tool:"+tool.Key]=1;
         }
+        state.Facts["food.reserve"]=reserve;
         foreach (var o in Known.Where(o=>o.Quantity>0))state.Facts["source:"+o.Entity]=o.Quantity;
         foreach (var storage in Known.Where(o=>o.Kind=="storage"))foreach (var item in storage.Items)state.Facts["stock:"+storage.Entity+":"+item.Key]=item.Value;
+        if (Known.Any(o=>o.Kind=="fire"&&o.Quantity>0&&o.Position.Distance(Position)<=2))state.Facts["heat"]=1;
         if (BuildSite.HasValue)state.Facts["site"]=1;
         if (Sheltered)state.Facts["indoors"]=1;
         return state;

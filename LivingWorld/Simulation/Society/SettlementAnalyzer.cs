@@ -63,6 +63,7 @@ public static class SettlementAnalyzer
         }
 
         var result=new List<SettlementSummary>(clusters.Count);
+        var usedNames=new HashSet<string>(StringComparer.Ordinal);
         for (var clusterIndex=0;clusterIndex<clusters.Count;clusterIndex++)
         {
             var cluster=clusters[clusterIndex];
@@ -125,7 +126,7 @@ public static class SettlementAnalyzer
 
             result.Add(new(
                 anchor,
-                NameFor(s.Seed,anchor),
+                NameFor(session,anchor,usedNames),
                 center,
                 minX,minY,maxX,maxY,
                 cluster.Count,
@@ -183,20 +184,14 @@ public static class SettlementAnalyzer
         return result;
     }
 
-    private static string NameFor(int seed,int anchor)
+    private static string NameFor(SimulationSession session,int anchor,HashSet<string> used)
     {
-        string[] roots=["берез","соснов","реч","озер","камен","лугов","дубров","ясн","верх","тих","зареч","серебр","мелов","ветров","светл","родник"];
-        string[] endings=["овка","ино","ское","ье","ица","ово","бор","доль","поле","град","ное","ск"];
-        unchecked
+        var generator=new NameGenerator(session.Definitions.Names);
+        for(var attempt=0;;attempt++)
         {
-            uint hash=2166136261;
-            hash=(hash^(uint)seed)*16777619;
-            hash=(hash^(uint)anchor)*16777619;
-            var root=roots[(int)(hash%(uint)roots.Length)];
-            hash=(hash>>1)^(hash*2246822519u);
-            var ending=endings[(int)(hash%(uint)endings.Length)];
-            var value=root+ending;
-            return char.ToUpperInvariant(value[0])+value[1..];
+            var random=new DeterministicRandom(RandomService.Hash(session.State.Seed,$"settlement:{anchor}:{attempt}"));
+            var value=generator.GenerateWord(random,2,4);
+            if(used.Add(value))return value;
         }
     }
 
