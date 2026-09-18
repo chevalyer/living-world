@@ -55,7 +55,7 @@ public static class SettlementAnalyzer
                 .Where(id=>
                 {
                     var family=e.Get<FamilyComponent>(id);
-                    if (family.HomeProject!=0&&homeIds.Contains(family.HomeProject))return true;
+                    if (family.HomeProject!=0)return homeIds.Contains(family.HomeProject);
                     var position=e.Get<PositionComponent>(id).Tile;
                     return cluster.Min(h=>h.Position.Distance(position))<=ResidentReach;
                 })
