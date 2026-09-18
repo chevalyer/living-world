@@ -44,3 +44,6 @@ jobs:
 
       - name: headless smoke
         run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 96 --npcs 8 --ticks 1440 --json artifacts/smoke.json
+
+      - name: seven day stability run
+        run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 96 --npcs 14 --ticks 10080 --json artifacts/week.json
