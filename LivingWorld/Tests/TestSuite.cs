@@ -501,18 +501,33 @@ public static class TestSuite
             var context=ContextBuilder.Create(s,id,false);
             Assert(context.Air>context.OutdoorAir,"planner ignored fire heat");
         });
-        Test("planner can compose fire before a heated recipe", ()=>
+        Test("metalworking recipes require a real forge facility", ()=>
         {
             var(s,id)=Fixture();
             Give(s,id,"iron_ore"); Give(s,id,"iron_ore");
-            Give(s,id,"log"); Give(s,id,"log"); Give(s,id,"log");
+            Give(s,id,"log"); Give(s,id,"log");
             s.State.Entities.Get<KnowledgeComponent>(id).Facts.Add("smithing");
+            var without=ContextBuilder.Create(s,id);
+            Assert(s.Planner.Find(without,s.Actions.All.SelectMany(a=>a.Options(without)).ToList(),
+                new(PlanningContext.ItemFact("iron_ingot"),"test",1)) is null,"iron smelting ignored missing forge");
+
+            var forge=s.State.Entities.Create();
+            s.State.Entities.Set(forge,new PositionComponent { Tile=new(6,5) });
+            s.State.Entities.Set(forge,new FacilityComponent { Definition="forge",Project=0,Builder=id });
+            s.State.Entities.Set(forge,new OwnershipComponent());
+            s.Spatial.Add(forge,new(6,5));
+            s.State.Entities.Get<MemoryComponent>(id).Observations.Add(new()
+            {
+                Kind="facility",Entity=forge,Definition="forge",Position=new(6,5),Quantity=1,
+                Capabilities=s.Definitions.Facilities["forge"].Capabilities,SeenTick=s.State.Clock.Tick
+            });
             var context=ContextBuilder.Create(s,id);
-            var plan=s.Planner.Find(context,s.Actions.All.SelectMany(a=>a.Options(context)).ToList(),new(PlanningContext.ItemFact("iron_ingot"),"test",1));
-            Assert(plan is not null,"heated craft plan missing");
+            var plan=s.Planner.Find(context,s.Actions.All.SelectMany(a=>a.Options(context)).ToList(),
+                new(PlanningContext.ItemFact("iron_ingot"),"test",1));
+            Assert(plan is not null,"forge did not enable smelting");
             var actions=plan!.Steps.Select(x=>x.Action).ToArray();
-            Assert(actions.Contains("light_fire")&&actions.Contains("craft"),"fire and craft were not composed");
-            Assert(Array.IndexOf(actions,"light_fire")<Array.IndexOf(actions,"craft"),"craft planned before fire");
+            Assert(actions.Contains("craft"),"forge plan does not craft");
+            Assert(!actions.Contains("light_fire"),"forge still requires a separate campfire");
         });
         Test("ordinary action failure does not poison location memory", ()=>
         {
