@@ -214,6 +214,28 @@ public static class TestSuite
             Equal(1, snapshot.Settlements[0].Homes);
             Assert(snapshot.People.Any(x=>x.Id==first&&!string.IsNullOrWhiteSpace(x.Name)), "person name missing from render snapshot");
         });
+        Test("separate save paths do not overwrite each other", ()=>
+        {
+            var(a, _)=Fixture();
+            var(b, _)=Fixture();
+            b.State.Seed=91;
+            var directory=Path.Combine(Path.GetTempPath(),"living-world-slots-"+Guid.NewGuid().ToString("N"));
+            var first=Path.Combine(directory,"world.save.json");
+            var second=Path.Combine(directory,"world-slot-2.save.json");
+            try
+            {
+                var saves=new SaveService();
+                saves.Save(a,first);
+                saves.Save(b,second);
+                Equal(a.State.Seed,saves.Load(first,D).State.Seed);
+                Equal(b.State.Seed,saves.Load(second,D).State.Seed);
+                Assert(File.Exists(first)&&File.Exists(second),"save slot file missing");
+            }
+            finally
+            {
+                if(Directory.Exists(directory))Directory.Delete(directory,true);
+            }
+        });
         Test("save resumes exact future state", ()=>
         {
             var(s, id)=Fixture(); Give(s, id, "grain"); Plant(s, new(6, 5), "raspberry_bush", 9); s.Step(47); var saves=new SaveService(); var restored=saves.Deserialize(saves.Serialize(s), D); Equal(saves.Hash(s), saves.Hash(restored)); s.Step(70); restored.Step(70); Equal(saves.Hash(s), saves.Hash(restored));
