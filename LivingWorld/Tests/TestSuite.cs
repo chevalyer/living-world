@@ -175,6 +175,80 @@ public static class TestSuite
         {
             var(s, id)=Fixture(); var storage=StorageService.Create(s, new(5, 5), 0); var item=Give(s, id, "grain"); Assert(StorageService.Deposit(s, id, storage, item), "deposit failed"); Equal(storage, s.State.Entities.Get<ItemComponent>(item).Holder); Equal(0, s.State.Entities.Get<OwnershipComponent>(item).Owner); Assert(StorageService.Take(s, id, storage, "grain"), "take failed"); Equal(id, s.State.Entities.Get<ItemComponent>(item).Holder);
         });
+        Test("settlement analyzer groups nearby homes deterministically", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s, new(4, 4));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s, new(10, 4));
+            var homeB=FinishedProject(s, new(10, 4));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            var a=SettlementAnalyzer.DescribeAll(s);
+            var b=SettlementAnalyzer.DescribeAll(s);
+            Equal(1, a.Count);
+            Equal(a[0].Name, b[0].Name);
+            Equal(2, a[0].Homes);
+            Equal(2, a[0].Members);
+            Assert(a[0].MinX<=4&&a[0].MaxX>=10, "settlement bounds exclude homes");
+        });
+        Test("settlement analyzer separates distant homes", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s, new(2, 2));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s, new(18, 18));
+            var homeB=FinishedProject(s, new(18, 18));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            var settlements=SettlementAnalyzer.DescribeAll(s);
+            Equal(2, settlements.Count);
+            Assert(settlements.Select(x=>x.Name).Distinct().Count()==2, "settlement names collided");
+            Assert(settlements.All(x=>x.Members==1), "resident assigned to multiple settlements");
+        });
+        Test("unhomed resident belongs to only one nearby settlement", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s,new(1,1));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s,new(19,19));
+            var homeB=FinishedProject(s,new(19,19));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            _=Adult(s,new(10,10));
+            var settlements=SettlementAnalyzer.DescribeAll(s);
+            Equal(2,settlements.Count);
+            Equal(3,settlements.Sum(x=>x.Members));
+        });
+        Test("render snapshot exposes immutable settlement data", ()=>
+        {
+            var(s, first)=Fixture();
+            var home=FinishedProject(s, new(5, 5));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=home;
+            var snapshot=new LivingWorld.Presentation.RenderSnapshotBuilder().Capture(s, 1, true, 1, 0, new(), force:true);
+            Equal(1, snapshot.Settlements.Count);
+            Equal(1, snapshot.Settlements[0].Homes);
+            Assert(snapshot.People.Any(x=>x.Id==first&&!string.IsNullOrWhiteSpace(x.Name)), "person name missing from render snapshot");
+        });
+        Test("separate save paths do not overwrite each other", ()=>
+        {
+            var(a, _)=Fixture();
+            var(b, _)=Fixture();
+            b.State.Seed=91;
+            var directory=Path.Combine(Path.GetTempPath(),"living-world-slots-"+Guid.NewGuid().ToString("N"));
+            var first=Path.Combine(directory,"world.save.json");
+            var second=Path.Combine(directory,"world-slot-2.save.json");
+            try
+            {
+                var saves=new SaveService();
+                saves.Save(a,first);
+                saves.Save(b,second);
+                Equal(a.State.Seed,saves.Load(first,D).State.Seed);
+                Equal(b.State.Seed,saves.Load(second,D).State.Seed);
+                Assert(File.Exists(first)&&File.Exists(second),"save slot file missing");
+            }
+            finally
+            {
+                if(Directory.Exists(directory))Directory.Delete(directory,true);
+            }
+        });
         Test("save resumes exact future state", ()=>
         {
             var(s, id)=Fixture(); Give(s, id, "grain"); Plant(s, new(6, 5), "raspberry_bush", 9); s.Step(47); var saves=new SaveService(); var restored=saves.Deserialize(saves.Serialize(s), D); Equal(saves.Hash(s), saves.Hash(restored)); s.Step(70); restored.Step(70); Equal(saves.Hash(s), saves.Hash(restored));
@@ -477,6 +551,20 @@ public static class TestSuite
         s.Spatial.Add(id, p);
         return id;
     }
+    private static int FinishedProject(SimulationSession s, GridPoint position)
+    {
+        var id=s.State.Entities.Create();
+        s.State.Entities.Set(id, new PositionComponent { Tile=position });
+        s.State.Entities.Set(id, new ConstructionComponent
+        {
+            Definition="wooden_cabin",
+            Elements=[],
+            Completed=0
+        });
+        s.Spatial.Add(id, position);
+        return id;
+    }
+
     private static int BuildHome(SimulationSession s, int actor)
     {
         s.State.Entities.Get<InventoryComponent>(actor).MaxMass=500;

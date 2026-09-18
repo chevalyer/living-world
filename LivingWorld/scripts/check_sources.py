@@ -25,6 +25,13 @@ for project in ROOT.rglob("*.csproj"):
 ET.parse(ROOT / "Directory.Build.props")
 ET.parse(ROOT / "NuGet.Config")
 
+version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+check(bool(re.fullmatch(r"\d+\.\d+\.\d+(?:-(?:alpha|beta|rc\d+))?", version)), "invalid VERSION")
+project_text = (ROOT / "project.godot").read_text(encoding="utf-8")
+readme_text = (ROOT / "README.md").read_text(encoding="utf-8")
+check(f'config/version="{version}"' in project_text, "project.godot version differs from VERSION")
+check(f"версия: **{version}**" in readme_text, "README version differs from VERSION")
+
 DATA = ROOT / "Definitions/Data"
 
 def load_group(name):

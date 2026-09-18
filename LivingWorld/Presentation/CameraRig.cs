@@ -1,27 +1,44 @@
 namespace LivingWorld.Presentation;
+
 public partial class CameraRig : Camera2D
 {
     public GameRoot Game { get; set; } = null!;
     private bool _dragging;
+
     public override void _Ready()
     {
         Enabled=true;
         Zoom=Vector2.One*1.3f;
         PositionSmoothingEnabled=false;
     }
+
     public void Focus(GridPoint point)
     {
         Position=new Vector2(point.X+.5f, point.Y+.5f)*WorldView.TileSize;
         Zoom=Vector2.One*1.3f;
     }
+
+    public void FocusArea(int minX,int minY,int maxX,int maxY)
+    {
+        var viewport=GetViewportRect().Size;
+        var width=Math.Max(5,maxX-minX+1)*WorldView.TileSize;
+        var height=Math.Max(5,maxY-minY+1)*WorldView.TileSize;
+        var usableWidth=Math.Max(320,viewport.X-720);
+        var usableHeight=Math.Max(260,viewport.Y-190);
+        var scale=MathF.Min(usableWidth/width,usableHeight/height);
+        Zoom=Vector2.One*Math.Clamp(scale,.35f,2.2f);
+        Position=new Vector2((minX+maxX+1)*.5f,(minY+maxY+1)*.5f)*WorldView.TileSize;
+    }
+
     public void FitWorld()
     {
         if (Game.Snapshot is not { } map)return;
         var viewport=GetViewportRect().Size;
-        var scale=MathF.Min((viewport.X-370)/(map.Width*WorldView.TileSize), (viewport.Y-180)/(map.Height*WorldView.TileSize));
+        var scale=MathF.Min((viewport.X-720)/(map.Width*WorldView.TileSize), (viewport.Y-180)/(map.Height*WorldView.TileSize));
         Zoom=Vector2.One*Math.Clamp(scale, .2f, 4);
-        Position=new Vector2(map.Width*.5f+9, map.Height*.5f)*WorldView.TileSize;
+        Position=new Vector2(map.Width*.5f, map.Height*.5f)*WorldView.TileSize;
     }
+
     public override void _Process(double delta)
     {
         if (!Input.IsMouseButtonPressed(MouseButton.Middle)) _dragging=false;
@@ -33,6 +50,7 @@ public partial class CameraRig : Camera2D
         if (Input.IsPhysicalKeyPressed(Key.D)||Input.IsPhysicalKeyPressed(Key.Right))direction.X++;
         Position+=direction.Normalized()*500*(float)delta/Zoom.X;
     }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         if (@event is InputEventMouseButton button)

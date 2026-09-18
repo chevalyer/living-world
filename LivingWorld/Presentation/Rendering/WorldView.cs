@@ -2,6 +2,15 @@ namespace LivingWorld.Presentation;
 
 using System.Diagnostics;
 
+public enum MapOverlay
+{
+    None,
+    Settlements,
+    Traffic,
+    Fertility,
+    Rooms
+}
+
 public partial class WorldView : Node2D
 {
     public const int TileSize = 16;
@@ -92,6 +101,7 @@ public partial class WorldView : Node2D
             else DrawRect(area, TerrainTexture.ColorFor(chunk.Tiles[136]));
         }
         VisibleChunks = _visible.Count;
+        DrawMapOverlay(world, margin);
         VisibleObjects = 0;
         if (CurrentLod == 0)
         {
@@ -108,6 +118,7 @@ public partial class WorldView : Node2D
         var alpha = world.Paused ? 1 : (float)Math.Clamp(Stopwatch.GetElapsedTime(_publicationTime).TotalSeconds * SimulationRunner.PublicationsPerSecond, 0, 1);
         foreach (var person in _people) DrawPerson(person, world.Tick, alpha);
         VisibleObjects += _people.Count;
+        if (Game.Overlay == MapOverlay.Settlements || Game.SelectedSettlement != 0) DrawSettlements(world, margin);
         if (Game.DebugView) DrawDebug(world, margin);
         var night = Math.Clamp((.25f - world.Sunlight) * .65f, 0, .16f);
         if (night > 0) DrawRect(rect, new Color(.04f, .07f, .18f, night));
@@ -120,6 +131,71 @@ public partial class WorldView : Node2D
                 _textures[key].Texture.Dispose();
                 _textures.Remove(key);
             }
+        }
+    }
+
+    private void DrawMapOverlay(RenderSnapshot world, Rect2 visible)
+    {
+        if (Game.Overlay is MapOverlay.None or MapOverlay.Settlements) return;
+        if (Game.Overlay == MapOverlay.Rooms)
+        {
+            foreach (var room in world.RoomAreas)
+                foreach (var tile in room.Tiles)
+                {
+                    var p=ToVector(tile);
+                    if (!visible.HasPoint(p))continue;
+                    DrawRect(new Rect2(new Vector2(tile.X*TileSize,tile.Y*TileSize),new Vector2(TileSize,TileSize)),
+                        new Color(.28f,.55f,.72f,.18f));
+                }
+            return;
+        }
+
+        foreach (var chunk in _visible)
+        {
+            for (var index=0; index<chunk.Tiles.Count; index++)
+            {
+                var x=chunk.X*16+index%16;
+                var y=chunk.Y*16+index/16;
+                if (x>=world.Width||y>=world.Height)continue;
+                var center=new Vector2((x+.5f)*TileSize,(y+.5f)*TileSize);
+                if (!visible.HasPoint(center))continue;
+                var tile=chunk.Tiles[index];
+                Color color;
+                if (Game.Overlay==MapOverlay.Traffic)
+                {
+                    var intensity=Math.Clamp(tile.Traffic/40f,0,1);
+                    if (intensity<=.01f)continue;
+                    color=new Color(.95f,.58f,.22f,.08f+.36f*intensity);
+                }
+                else
+                {
+                    var fertility=Math.Clamp(tile.Fertility,0,1);
+                    var low=new Color(.48f,.25f,.18f,1);
+                    var high=new Color(.42f,.68f,.35f,1);
+                    var mixed=low.Lerp(high,fertility);
+                    color=new Color(mixed.R,mixed.G,mixed.B,.10f+.24f*fertility);
+                }
+                DrawRect(new Rect2(new Vector2(x*TileSize,y*TileSize),new Vector2(TileSize,TileSize)),color);
+            }
+        }
+    }
+
+    private void DrawSettlements(RenderSnapshot world, Rect2 visible)
+    {
+        foreach (var settlement in world.Settlements)
+        {
+            var rect=new Rect2(
+                new Vector2(settlement.MinX*TileSize,settlement.MinY*TileSize),
+                new Vector2((settlement.MaxX-settlement.MinX+1)*TileSize,(settlement.MaxY-settlement.MinY+1)*TileSize));
+            if (!rect.Intersects(visible))continue;
+            var selected=settlement.Anchor==Game.SelectedSettlement;
+            var fill=selected?new Color(.92f,.71f,.36f,.15f):new Color(.53f,.72f,.56f,.09f);
+            var border=selected?new Color(.98f,.79f,.43f,.95f):new Color(.62f,.79f,.63f,.72f);
+            DrawRect(rect,fill);
+            DrawRect(rect,border,false,selected?2f:1f);
+            var fontSize=(int)Math.Clamp(14f/Game.Camera.Zoom.X,10,36);
+            var labelPosition=new Vector2(rect.Position.X+4/Game.Camera.Zoom.X,rect.Position.Y-6/Game.Camera.Zoom.X);
+            DrawString(ThemeDB.FallbackFont,labelPosition,settlement.Name,HorizontalAlignment.Left,-1,fontSize,border);
         }
     }
 
@@ -196,6 +272,11 @@ public partial class WorldView : Node2D
         DrawRect(new Rect2(p + new Vector2(1, 3 - step) * scale, new Vector2(2, 3) * scale), new Color("#4c5048"));
         if (person.Sleeping) Pixel(p, 5, -13, 2, 2, "#d9e4e8");
         if (person.Pregnant) Pixel(p, 6, -5, 2, 2, "#e8c9b7");
+        if (Game.DebugView && selected)
+        {
+            var fontSize=(int)Math.Clamp(11f/Game.Camera.Zoom.X,9,26);
+            DrawString(ThemeDB.FallbackFont,p+new Vector2(8,-12),person.Action,HorizontalAlignment.Left,-1,fontSize,new Color(.94f,.91f,.82f,.9f));
+        }
     }
     private void DrawDebug(RenderSnapshot snapshot, Rect2 visible)
     {
