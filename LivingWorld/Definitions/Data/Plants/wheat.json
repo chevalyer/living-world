@@ -1,0 +1,12 @@
+{
+  "id": "wheat",
+  "name": "пшеница",
+  "kind": "crop",
+  "product": "grain",
+  "minTemperature": 7,
+  "growthDays": 60,
+  "regrowthDays": 18,
+  "lifespanDays": 210,
+  "color": "#bfa769",
+  "yield": 14
+}

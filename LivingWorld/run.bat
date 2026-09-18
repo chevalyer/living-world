@@ -12,6 +12,6 @@ dotnet build LivingWorld.csproj --nologo
 if errorlevel 1 exit /b 1
 "%GODOT_BIN%" --path "%~dp0."
 if errorlevel 1 (
-  echo Launch failed. Pass the path to the Godot 4.5 .NET executable as the first argument.
+  echo Launch failed. Pass the path to the Godot 4.7.1 .NET executable as the first argument.
   exit /b 1
 )

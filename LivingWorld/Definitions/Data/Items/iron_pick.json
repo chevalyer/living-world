@@ -1,0 +1,27 @@
+{
+  "id": "iron_pick",
+  "name": "железная кирка",
+  "material": "iron",
+  "mass": 2.4,
+  "volume": 3.5999999999999996,
+  "tools": {
+    "mine": 1.5
+  },
+  "durability": 160,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_pick",
+      "name": "собрать железную кирку",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 90
+    }
+  ]
+}

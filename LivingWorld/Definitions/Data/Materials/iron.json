@@ -1,0 +1,10 @@
+{
+  "id": "iron",
+  "name": "железо",
+  "density": 7870,
+  "insulation": 0.05,
+  "waterResistance": 1,
+  "strength": 1.8,
+  "flammability": 0,
+  "flexibility": 0.1
+}

@@ -1,0 +1,13 @@
+{
+  "id": "wool_hat",
+  "name": "шерстяная шапка",
+  "material": "wool",
+  "mass": 0.2,
+  "volume": 0.30000000000000004,
+  "slots": [
+    "head"
+  ],
+  "coverage": 0.12,
+  "thickness": 1.5,
+  "comfort": 0.95
+}

@@ -1,0 +1,27 @@
+{
+  "id": "leather_jacket",
+  "name": "кожаная куртка",
+  "material": "leather",
+  "mass": 1.8,
+  "volume": 2.7,
+  "slots": [
+    "outer_torso",
+    "arms"
+  ],
+  "coverage": 0.5,
+  "thickness": 1.8,
+  "comfort": 0.8,
+  "recipes": [
+    {
+      "id": "leather_jacket",
+      "name": "сшить куртку",
+      "operation": "sew",
+      "inputs": {
+        "leather": 3
+      },
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 100
+    }
+  ]
+}

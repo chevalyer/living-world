@@ -1,0 +1,13 @@
+{
+  "id": "wild_flax",
+  "name": "дикий лен",
+  "kind": "grass",
+  "product": "fiber",
+  "minTemperature": 5,
+  "growthDays": 22,
+  "regrowthDays": 9,
+  "lifespanDays": 370,
+  "color": "#83975a",
+  "fruitColor": "#9aaecd",
+  "yield": 5
+}

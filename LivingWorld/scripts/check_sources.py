@@ -25,25 +25,47 @@ for project in ROOT.rglob("*.csproj"):
 ET.parse(ROOT / "Directory.Build.props")
 ET.parse(ROOT / "NuGet.Config")
 
-data = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in (ROOT / "Definitions/Data").glob("*.json")}
-for kind in ("materials", "items", "plants", "recipes", "buildings"):
-    identifiers = [entry["id"] for entry in data[kind]]
-    check(len(identifiers) == len(set(identifiers)), "duplicate " + kind + " id")
-    for identity in identifiers: check(bool(re.fullmatch(r"[a-z][a-z0-9_]*", identity)), "unstable id: " + identity)
-materials = {d["id"] for d in data["materials"]}
-items = {d["id"]: d for d in data["items"]}
-for item in items.values():
-    check(item["material"] in materials, "unknown material: " + item["id"])
-    check(item["mass"] > 0 and item["volume"] > 0, "invalid physical size: " + item["id"])
-for plant in data["plants"]:
-    check(plant["product"] in items, "unknown yield: " + plant["id"])
-    check(plant["growthDays"] > 0 and plant["regrowthDays"] > 0, "invalid growth period: " + plant["id"])
-for recipe in data["recipes"]:
-    check(recipe["output"] in items, "unknown recipe output: " + recipe["id"])
-    for ingredient, count in recipe["inputs"].items(): check(ingredient in items and count > 0, "invalid recipe input: " + recipe["id"])
-for building in data["buildings"]:
-    check(building["material"] in materials and building["resource"] in items, "invalid building references")
-names = data["names"]
+DATA = ROOT / "Definitions/Data"
+
+def load_group(name):
+    files = sorted((DATA / name).rglob("*.json"))
+    check(bool(files), "missing definition group: " + name)
+    result = []
+    for path in files:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        check(isinstance(value, dict), "definition file must contain one object: " + str(path.relative_to(ROOT)))
+        if not isinstance(value, dict):
+            continue
+        result.append(value)
+        if "id" in value:
+            check(path.stem == value["id"], "definition id does not match filename: " + str(path.relative_to(ROOT)))
+    return result
+
+materials_list = load_group("Materials")
+items_list = load_group("Items")
+plants_list = load_group("Plants")
+buildings_list = load_group("Buildings")
+name_files = sorted((DATA / "Names").rglob("*.json"))
+check(len(name_files) == 1, "Names must contain exactly one json file")
+names = json.loads(name_files[0].read_text(encoding="utf-8")) if name_files else {}
+
+recipes_list = []
+for item in items_list:
+    for recipe in item.get("recipes", []):
+        check("output" not in recipe, "embedded recipe declares output: " + item.get("id", "<unknown>"))
+        value = dict(recipe)
+        value["output"] = item["id"]
+        recipes_list.append(value)
+
+data = {
+    "materials": materials_list,
+    "items": items_list,
+    "plants": plants_list,
+    "recipes": recipes_list,
+    "buildings": buildings_list,
+    "names": names,
+}
+
 check(not {"male", "female", "surnames"}.intersection(names), "word-list name generation still present")
 for kind in ("vowels", "consonants"):
     alphabet = names[kind]

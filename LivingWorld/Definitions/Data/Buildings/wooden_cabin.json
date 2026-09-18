@@ -1,0 +1,9 @@
+{
+  "id": "wooden_cabin",
+  "name": "деревянный дом",
+  "material": "wood",
+  "resource": "log",
+  "size": 5,
+  "unitsPerElement": 1,
+  "workMinutes": 12
+}

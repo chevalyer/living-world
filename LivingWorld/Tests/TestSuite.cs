@@ -212,17 +212,23 @@ public static class TestSuite
         Test("additive content keeps existing saves loadable", () =>
         {
             var (s, id) = Fixture(); var saves = new SaveService(); var saved = saves.Serialize(s);
-            var extended = DefinitionLoader.LoadText(name =>
+            var directory=CopyDefinitions();
+            try
             {
-                var content = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Data", name));
-                if (name != "items.json") return content;
-                var array = JsonNode.Parse(content)!.AsArray(); var item = array[0]!.DeepClone();
-                item["id"] = "new_berry"; array.Add(item); return array.ToJsonString();
-            });
-            var loaded = saves.Deserialize(saved, extended);
-            Equal(s.State.Entities.Count, loaded.State.Entities.Count);
+                var source=Path.Combine(directory, "Items", "raspberry.json");
+                var item=JsonNode.Parse(File.ReadAllText(source))!.AsObject();
+                item["id"]="new_berry";
+                File.WriteAllText(Path.Combine(directory, "Items", "new_berry.json"), item.ToJsonString());
+                var extended=DefinitionLoader.Load(directory);
+                var loaded=saves.Deserialize(saved, extended);
+                Equal(s.State.Entities.Count, loaded.State.Entities.Count);
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
         });
-        Test("phonetic names are deterministic and varied", () =>
+        Test("phonetic names are deterministic and varied"        Test("phonetic names are deterministic and varied", () =>
         {
             var generator = new NameGenerator(D.Names);
             var a = new DeterministicRandom(198);
@@ -284,16 +290,22 @@ public static class TestSuite
         Test("name migration does not allow changed gameplay definitions", () =>
         {
             var (s, _) = Fixture(); var saves = new SaveService();
-            var changed = DefinitionLoader.LoadText(name =>
+            var directory=CopyDefinitions();
+            try
             {
-                var content = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Data", name));
-                if (name != "items.json") return content;
-                var array = JsonNode.Parse(content)!.AsArray();
-                array[0]!["mass"] = 123; return array.ToJsonString();
-            });
-            Throws(() => saves.Deserialize(saves.Serialize(s), changed));
+                var path=Path.Combine(directory, "Items", "raspberry.json");
+                var item=JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+                item["mass"]=123;
+                File.WriteAllText(path, item.ToJsonString());
+                var changed=DefinitionLoader.Load(directory);
+                Throws(() => saves.Deserialize(saves.Serialize(s), changed));
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
         });
-        Test("visual dirtiness is local to a chunk", () =>
+        Test("visual dirtiness is local to a chunk"        Test("visual dirtiness is local to a chunk", () =>
         {
             var map = new WorldMap(48, 48);
             map.MarkVisualDirty(new(2, 2));
@@ -405,6 +417,19 @@ public static class TestSuite
         Console.WriteLine($"\n{_passed} passed; {_failed} failed.");
         return _failed==0?0:1;
     }
+    private static string CopyDefinitions()
+    {
+        var source=Path.Combine(AppContext.BaseDirectory, "Data");
+        var target=Path.Combine(Path.GetTempPath(), "living-world-definitions-"+Guid.NewGuid().ToString("N"));
+        foreach (var file in Directory.EnumerateFiles(source, "*.json", SearchOption.AllDirectories))
+        {
+            var destination=Path.Combine(target, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(file, destination);
+        }
+        return target;
+    }
+
     private static (SimulationSession Session, int Actor) Fixture(int age=25)
     {
         var state=new WorldState

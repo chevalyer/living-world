@@ -29,6 +29,23 @@ public partial class GameRoot : Node2D
         set { if (_speed == value) return; _speed = value; _ = ApplyControls(); }
     }
 
+    private static IEnumerable<string> DefinitionFiles(string group)
+    {
+        var root="res://Definitions/Data/"+group;
+        return Walk(root, group);
+
+        static IEnumerable<string> Walk(string directory, string relative)
+        {
+            foreach (var file in DirAccess.GetFilesAt(directory)
+                         .Where(name=>name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                         .OrderBy(name=>name, StringComparer.Ordinal))
+                yield return relative+"/"+file;
+            foreach (var child in DirAccess.GetDirectoriesAt(directory).OrderBy(name=>name, StringComparer.Ordinal))
+                foreach (var file in Walk(directory+"/"+child, relative+"/"+child))
+                    yield return file;
+        }
+    }
+
     public override void _Ready()
     {
         TextureFilter = TextureFilterEnum.Nearest;
@@ -40,10 +57,10 @@ public partial class GameRoot : Node2D
         AddChild(Hud);
         try
         {
-            var definitions = DefinitionLoader.LoadText(name =>
+            var definitions = DefinitionLoader.LoadFiles(DefinitionFiles, path =>
             {
-                using var file = Godot.FileAccess.Open("res://Definitions/Data/" + name, Godot.FileAccess.ModeFlags.Read);
-                return file?.GetAsText() ?? throw new InvalidDataException("Нет файла определений: " + name);
+                using var file = Godot.FileAccess.Open("res://Definitions/Data/" + path, Godot.FileAccess.ModeFlags.Read);
+                return file?.GetAsText() ?? throw new InvalidDataException("Нет файла определений: " + path);
             });
             _runner = new SimulationRunner(definitions);
             _ = NewWorld(1847, 128, 14);

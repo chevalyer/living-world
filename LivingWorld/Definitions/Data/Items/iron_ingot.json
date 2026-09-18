@@ -1,0 +1,24 @@
+{
+  "id": "iron_ingot",
+  "name": "железная заготовка",
+  "material": "iron",
+  "mass": 1.5,
+  "volume": 2.25,
+  "tags": [
+    "metal"
+  ],
+  "recipes": [
+    {
+      "id": "iron_ingot",
+      "name": "обжечь руду",
+      "operation": "heat",
+      "inputs": {
+        "iron_ore": 2,
+        "log": 2
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 150
+    }
+  ]
+}

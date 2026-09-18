@@ -1,0 +1,10 @@
+{
+  "id": "wool",
+  "name": "шерстяная ткань",
+  "material": "wool",
+  "mass": 0.4,
+  "volume": 0.6000000000000001,
+  "tags": [
+    "fabric"
+  ]
+}

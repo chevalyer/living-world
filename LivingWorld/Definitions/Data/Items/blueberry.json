@@ -1,0 +1,13 @@
+{
+  "id": "blueberry",
+  "name": "черника",
+  "material": "organic",
+  "mass": 0.12,
+  "volume": 0.18,
+  "calories": 70,
+  "water": 0.1,
+  "shelfLifeDays": 6,
+  "tags": [
+    "food"
+  ]
+}

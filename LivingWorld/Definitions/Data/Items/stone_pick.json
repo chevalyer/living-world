@@ -1,0 +1,27 @@
+{
+  "id": "stone_pick",
+  "name": "каменная кирка",
+  "material": "stone",
+  "mass": 2,
+  "volume": 3,
+  "tools": {
+    "mine": 0.6
+  },
+  "durability": 85,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "stone_pick",
+      "name": "собрать кирку",
+      "inputs": {
+        "log": 1,
+        "granite": 2
+      },
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 45
+    }
+  ]
+}

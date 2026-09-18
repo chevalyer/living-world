@@ -1,0 +1,9 @@
+{
+  "id": "stone_cabin",
+  "name": "каменный дом",
+  "material": "stone",
+  "resource": "granite",
+  "size": 5,
+  "unitsPerElement": 1,
+  "workMinutes": 22
+}

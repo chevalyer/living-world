@@ -1,0 +1,14 @@
+{
+  "id": "pine",
+  "name": "сосна",
+  "kind": "tree",
+  "product": "log",
+  "minTemperature": 0,
+  "growthDays": 420,
+  "regrowthDays": 1000,
+  "lifespanDays": 80000,
+  "color": "#325b48",
+  "yield": 5,
+  "shape": "conifer",
+  "optimalTemperature": 8
+}

@@ -1,0 +1,10 @@
+{
+  "id": "leather",
+  "name": "кожа",
+  "density": 860,
+  "insulation": 0.9,
+  "waterResistance": 0.8,
+  "strength": 0.7,
+  "flammability": 0.25,
+  "flexibility": 0.8
+}

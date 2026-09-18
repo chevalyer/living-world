@@ -1,0 +1,14 @@
+{
+  "id": "grain",
+  "name": "зерно",
+  "material": "organic",
+  "mass": 0.2,
+  "volume": 0.30000000000000004,
+  "calories": 650,
+  "water": 0.03,
+  "shelfLifeDays": 180,
+  "tags": [
+    "food",
+    "seed"
+  ]
+}

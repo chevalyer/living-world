@@ -1,0 +1,12 @@
+{
+  "id": "oak",
+  "name": "дуб",
+  "kind": "tree",
+  "product": "log",
+  "minTemperature": 5,
+  "growthDays": 365,
+  "regrowthDays": 1000,
+  "lifespanDays": 60000,
+  "color": "#466947",
+  "yield": 6
+}

@@ -1,0 +1,23 @@
+{
+  "id": "cloth",
+  "name": "льняная ткань",
+  "material": "flax",
+  "mass": 0.4,
+  "volume": 0.6000000000000001,
+  "tags": [
+    "fabric"
+  ],
+  "recipes": [
+    {
+      "id": "cloth",
+      "name": "обработать волокно",
+      "operation": "cut",
+      "inputs": {
+        "fiber": 3
+      },
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 25
+    }
+  ]
+}
