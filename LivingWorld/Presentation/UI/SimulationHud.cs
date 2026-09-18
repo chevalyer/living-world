@@ -16,7 +16,7 @@ public partial class SimulationHud : CanvasLayer
     private VBoxContainer _searchResults=null!, _settlementList=null!;
     private Control _modal=null!;
     private SpinBox _people=null!;
-    private OptionButton _mapSize=null!;
+    private OptionButton _mapSize=null!, _saveSlots=null!;
 
     private readonly Dictionary<string,Button> _tabButtons=new(StringComparer.Ordinal);
     private readonly Dictionary<MapOverlay,Button> _overlayButtons=[];
@@ -86,6 +86,15 @@ public partial class SimulationHud : CanvasLayer
 
         row.AddChild(Spacer(10));
         row.AddChild(Button("новый мир",ShowNewWorld,"создать мир с другим сидом"));
+        _saveSlots=new OptionButton
+        {
+            CustomMinimumSize=new Vector2(86,0),
+            TooltipText="слот сохранения"
+        };
+        for(var slot=1;slot<=3;slot++)_saveSlots.AddItem("слот "+slot,slot);
+        _saveSlots.Selected=0;
+        _saveSlots.ItemSelected+=index=>Game.SaveSlot=_saveSlots.GetItemId((int)index);
+        row.AddChild(_saveSlots);
         row.AddChild(Button("сохранить",Game.Save,"сохранить · F5"));
         row.AddChild(Button("загрузить",Game.Load,"загрузить · F9"));
     }
