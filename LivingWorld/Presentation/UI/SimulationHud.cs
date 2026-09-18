@@ -215,6 +215,7 @@ public partial class SimulationHud : CanvasLayer
         AddOverlay(row,"тропы",MapOverlay.Traffic);
         AddOverlay(row,"почва",MapOverlay.Fertility);
         AddOverlay(row,"комнаты",MapOverlay.Rooms);
+        AddOverlay(row,"объекты",MapOverlay.Facilities);
 
         row.AddChild(Spacer(8));
         var hint=Label("F3",11);

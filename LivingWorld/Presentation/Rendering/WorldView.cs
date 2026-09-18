@@ -8,7 +8,8 @@ public enum MapOverlay
     Settlements,
     Traffic,
     Fertility,
-    Rooms
+    Rooms,
+    Facilities
 }
 
 public partial class WorldView : Node2D
@@ -137,6 +138,20 @@ public partial class WorldView : Node2D
     private void DrawMapOverlay(RenderSnapshot world, Rect2 visible)
     {
         if (Game.Overlay is MapOverlay.None or MapOverlay.Settlements) return;
+        if(Game.Overlay==MapOverlay.Facilities)
+        {
+            foreach(var chunk in _visible)
+            foreach(var entity in chunk.Entities.Where(e=>e.Kind=="facility"))
+            {
+                var center=ToVector(entity.Tile);
+                if(!visible.HasPoint(center))continue;
+                var color=new Color(entity.Accent);
+                DrawRect(new Rect2(center-new Vector2(7,7),new Vector2(14,14)),
+                    new Color(color.R,color.G,color.B,.16f));
+                DrawRect(new Rect2(center-new Vector2(7,7),new Vector2(14,14)),color,false,1.5f);
+            }
+            return;
+        }
         if (Game.Overlay == MapOverlay.Rooms)
         {
             foreach (var room in world.RoomAreas)
