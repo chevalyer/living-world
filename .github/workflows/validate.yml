@@ -48,6 +48,20 @@ jobs:
       - name: seven day stability run
         run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 128 --npcs 14 --ticks 10080 --json artifacts/week.json
 
+      - name: inspect seven day content
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("artifacts/week.json").read_text())
+          assert data["simulation_tick"]==10080, "week simulation incomplete"
+          assert data["population"]==14, f"unexpected week population: {data['population']}"
+          assert not data["deaths"], f"unexpected week deaths: {data['deaths']}"
+          assert data["facilities"]>0, "NPCs produced no facilities in the integration world"
+          assert data["action_failures"]<100, f"excessive week failures: {data['action_failures']}"
+          print("week facilities", data["facility_counts"], "failures", data["action_failures"])
+          PY
+
       - name: thirty day multi-seed behavior soak
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
         run: |
