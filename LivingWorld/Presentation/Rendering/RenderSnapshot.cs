@@ -6,13 +6,20 @@ using LivingWorld.Simulation;
 namespace LivingWorld.Presentation;
 
 // These records contain only values and read-only collections. They never expose live components.
-public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic);
+public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility);
 public readonly record struct RenderEntity(int Id, GridPoint Tile, string Kind, string Color, string Accent,
     string Shape, float Growth, float Yield);
-public readonly record struct RenderPerson(int Id, GridPoint Tile, int Appearance, bool Child, bool Alive, bool Moving, bool Sleeping, bool Pregnant);
+public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action, int Appearance,
+    bool Child, bool Alive, bool Moving, bool Sleeping, bool Pregnant);
 public readonly record struct RenderMemory(GridPoint Tile, float Confidence);
 public sealed record RenderChunk(int Key, int X, int Y, long Revision,
     ReadOnlyCollection<RenderTile> Tiles, ReadOnlyCollection<RenderEntity> Entities);
+public sealed record RenderSettlement(
+    int Anchor, string Name, GridPoint Center,
+    int MinX, int MinY, int MaxX, int MaxY,
+    int Homes, int Members, int Families, float FoodCalories, int Projects,
+    ReadOnlyCollection<string> Specializations);
+public sealed record RenderRoom(int Id, ReadOnlyCollection<GridPoint> Tiles);
 public sealed record InspectorSnapshot(string Title, string Text);
 public sealed record ViewRequest(int Selected = 0, GridPoint? Tile = null, bool Debug = false);
 
@@ -21,6 +28,7 @@ public sealed record RenderSnapshot(
     GridPoint Start, float Sunlight, string Season, float Air, bool Rain, int Population, int Homes, int Rooms,
     string LastEvent, bool Paused, int Speed, double TicksPerSecond,
     ReadOnlyCollection<RenderChunk> Chunks, ReadOnlyCollection<RenderPerson> People,
+    ReadOnlyCollection<RenderSettlement> Settlements, ReadOnlyCollection<RenderRoom> RoomAreas,
     InspectorSnapshot Inspector, string WorldText, string SystemsText,
     ReadOnlyCollection<GridPoint> Path, ReadOnlyCollection<RenderMemory> Memories)
 {
@@ -34,6 +42,7 @@ public sealed class RenderSnapshotBuilder
 {
     private RenderChunk[] _chunks = [];
     private int[] _mapRevisions = [];
+    private RenderSettlement[] _settlements = [];
     private WorldMap? _map;
     private long _revision;
     private long _sequence;
@@ -61,6 +70,9 @@ public sealed class RenderSnapshotBuilder
             RefreshChunks(session);
             _population = s.Population;
             _homes = s.Entities.Store<ConstructionComponent>().All.Count(x => x.Value.Finished);
+            _settlements = SettlementAnalyzer.DescribeAll(session).Select(x=>new RenderSettlement(
+                x.Anchor,x.Name,x.Center,x.MinX,x.MinY,x.MaxX,x.MaxY,x.Homes,x.Members,x.Families,
+                x.FoodCalories,x.Projects,Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
             _worldText = DescribeWorld(session);
             _systemsText = DescribeSystems(session);
             _inspector = DescribeSelection(session, request);
@@ -72,16 +84,21 @@ public sealed class RenderSnapshotBuilder
             _inspector = DescribeSelection(session, request);
             _lastRequest = request;
         }
+
         var people = new List<RenderPerson>();
         foreach (var (id, identity) in s.Entities.Store<IdentityComponent>().All)
         {
             var e = s.Entities;
-            people.Add(new(id, e.Get<PositionComponent>(id).Tile, identity.Appearance,
+            var step=e.Get<DecisionComponent>(id).Plan.FirstOrDefault();
+            var action=step is null?"наблюдает":session.Actions[step.Action].Label;
+            people.Add(new(id, e.Get<PositionComponent>(id).Tile, identity.FullName, action, identity.Appearance,
                 s.Clock.Age(identity.BirthDate) < 18, e.Get<HealthComponent>(id).Alive,
                 e.Get<MovementComponent>(id).Path.Count > 0,
-                e.Get<DecisionComponent>(id).Plan.FirstOrDefault()?.Action == "sleep",
+                step?.Action == "sleep",
                 e.Get<FamilyComponent>(id).PregnancyDueTick.HasValue));
         }
+
+        var roomAreas=s.Rooms.Select(room=>new RenderRoom(room.Id,Array.AsReadOnly(room.Tiles.ToArray()))).ToArray();
         GridPoint[] path = [];
         RenderMemory[] memories = [];
         if (request.Debug && s.Entities.Has<IdentityComponent>(request.Selected))
@@ -93,8 +110,9 @@ public sealed class RenderSnapshotBuilder
         return new(generation, ++_sequence, now, s.Clock.Tick, s.Clock.Now, s.Seed, map.Width, map.Height,
             s.Start, s.Weather.Sunlight, s.Clock.Season, EnvironmentQueries.Air(s, s.Start), s.Weather.Rain > .1f,
             _population, _homes, s.Rooms.Count, s.Journal.LastOrDefault()?.Text ?? "мир просыпается", paused, speed,
-            ticksPerSecond, Array.AsReadOnly((RenderChunk[])_chunks.Clone()), people.AsReadOnly(), _inspector,
-            _worldText, _systemsText, Array.AsReadOnly(path), Array.AsReadOnly(memories));
+            ticksPerSecond, Array.AsReadOnly((RenderChunk[])_chunks.Clone()), people.AsReadOnly(),
+            Array.AsReadOnly((RenderSettlement[])_settlements.Clone()), Array.AsReadOnly(roomAreas),
+            _inspector, _worldText, _systemsText, Array.AsReadOnly(path), Array.AsReadOnly(memories));
     }
 
     private void RefreshChunks(SimulationSession session)
@@ -155,7 +173,7 @@ public sealed class RenderSnapshotBuilder
                     var point = new GridPoint(cx * 16 + x, cy * 16 + y);
                     if (!s.Map.Contains(point)) continue;
                     var t = s.Map[point];
-                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic);
+                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic, t.Fertility);
                 }
                 tiles = Array.AsReadOnly(values);
             }
@@ -171,9 +189,9 @@ public sealed class RenderSnapshotBuilder
         if (request.Tile is { } p && s.Map.Contains(p))
         {
             var t = s.Map[p];
-            return new("местность", $"клетка {p.X}, {p.Y}\n\n{BiomeName(t.Biome)}\nвысота {t.Height:F3}\nвлажность {t.Moisture:P0}\nплодородие {t.Fertility:P0}\nвода {t.Water}\nлед {t.Ice*100:F1} см\nснег {t.Snow:P0}\nпроходимость {(s.Map.Walkable(p)?"да":"нет")}\nтропа {t.Traffic:F0}\nтемпература {EnvironmentQueries.Air(s,p):F1} °C");
+            return new("местность", $"клетка {p.X}, {p.Y}\n\n{BiomeName(t.Biome)}\nвысота {t.Height:F3}\nвлажность {t.Moisture:P0}\nплодородие {t.Fertility:P0}\nвода {t.Water}\nлед {t.Ice*100:F1} см\nснег {t.Snow:P0}\nкомната {(t.Room==0?"нет":t.Room)}\nпроходимость {(s.Map.Walkable(p)?"да":"нет")}\nтропа {t.Traffic:F0}\nтемпература {EnvironmentQueries.Air(s,p):F1} °C");
         }
-        return new("выбери жителя", "Нажми на жителя. Здесь появятся нужды, вещи, навыки, отношения и объяснение текущего решения.\n\nF2 покажет известные ему ресурсы и маршрут.");
+        return new("выбери жителя", "Нажми на жителя или найди его по имени. Здесь появятся нужды, вещи, навыки, отношения и объяснение текущего решения.\n\nF2 покажет известные ему ресурсы и маршрут.");
     }
 
     private static InspectorSnapshot DescribePerson(SimulationSession session, int id)
@@ -201,7 +219,7 @@ public sealed class RenderSnapshotBuilder
         if (step is not null&&decision.RemainingMinutes>0)text.AppendLine($"осталось {decision.RemainingMinutes:F0} игровых минут");
         if (decision.Plan.Count>1)text.AppendLine("далее: "+string.Join(" → ", decision.Plan.Skip(1).Take(4).Select(x=>session.Actions[x.Action].Label)));
         Section(text, "оценка вариантов");
-        foreach (var choice in decision.Alternatives.Take(5))text.AppendLine($"{choice.Score:F2} · {Safe(choice.Motive)}\n[color=#879581]{Safe(choice.FirstAction)} · {choice.Cost:F0} мин[/color]");
+        foreach (var choice in decision.Alternatives.Take(5))text.AppendLine($"{choice.Score:F2} · {Safe(choice.Motive)}\n[color=#8fa38b]{Safe(choice.FirstAction)} · {choice.Cost:F0} мин[/color]");
         if (decision.LastFailure.Length>0)text.AppendLine("последняя неудача: "+Safe(decision.LastFailure));
         Section(text, "инвентарь");
         text.AppendLine($"{session.Inventory.Mass(id):F1} / {e.Get<InventoryComponent>(id).MaxMass:F0} кг");
@@ -210,7 +228,7 @@ public sealed class RenderSnapshotBuilder
         foreach (var itemId in e.Get<EquipmentComponent>(id).Items)
         {
             var item=e.Get<ItemComponent>(itemId);
-            text.AppendLine($"{Safe(session.Definitions.Items[item.Definition].Name)}\n[color=#879581]прочность {item.Durability:F0} · влажность {item.Wetness:P0}[/color]");
+            text.AppendLine($"{Safe(session.Definitions.Items[item.Definition].Name)}\n[color=#8fa38b]прочность {item.Durability:F0} · влажность {item.Wetness:P0}[/color]");
         }
         Section(text, "навыки");
         foreach (var skill in e.Get<SkillsComponent>(id).Experience.OrderByDescending(x=>x.Value).Take(6))text.AppendLine($"{Safe(skill.Key)}  {e.Get<SkillsComponent>(id).Level(skill.Key):F1}");
@@ -222,7 +240,7 @@ public sealed class RenderSnapshotBuilder
         foreach (var person in e.Get<RelationshipComponent>(id).People.OrderByDescending(x=>x.Value.Familiarity).Take(4))
         {
             var name=e.Try<IdentityComponent>(person.Key)?.FullName??"неизвестно";
-            text.AppendLine($"{Safe(name)}\n[color=#879581]доверие {person.Value.Trust:P0} · симпатия {person.Value.Affection:P0}[/color]");
+            text.AppendLine($"{Safe(name)}\n[color=#8fa38b]доверие {person.Value.Trust:P0} · симпатия {person.Value.Affection:P0}[/color]");
         }
         if (family.Partner!=0)text.AppendLine("партнер: "+Safe(e.Get<IdentityComponent>(family.Partner).FullName));
         if (family.Children.Count>0)text.AppendLine("детей: "+family.Children.Count);
@@ -235,28 +253,44 @@ public sealed class RenderSnapshotBuilder
         var s=session.State;
         var text=new StringBuilder();
         text.AppendLine($"сид {s.Seed}\n{s.Map.Width} × {s.Map.Height} клеток\n{s.Entities.Count} сущностей\nтик {s.Clock.Tick}");
+        Section(text,"поселения");
+        var settlements=SettlementAnalyzer.DescribeAll(session);
+        if (settlements.Count==0)text.AppendLine("пока не сформированы");
+        foreach(var settlement in settlements)
+            text.AppendLine($"{Safe(settlement.Name)} · {settlement.Members} жителей · {settlement.Homes} домов");
         Section(text,"природа");
         text.AppendLine($"растений {s.Entities.Store<PlantComponent>().Count}\nпредметов {s.Entities.Store<ItemComponent>().Count}\nпроектов {s.Entities.Store<ConstructionComponent>().Count}");
         Section(text,"погода");
         text.AppendLine($"световой день {s.Weather.DaylightHours:F1} ч\nветер {s.Weather.Wind:P0}\nосадки {s.Weather.Rain:P0}");
         Section(text,"история");
-        foreach(var ev in s.Journal.AsEnumerable().Reverse().Take(16))text.AppendLine($"[color=#879581]{s.Clock.Epoch.AddMinutes(ev.Tick):dd.MM HH:mm}[/color]\n{Safe(ev.Text)}\n");
+        foreach(var ev in s.Journal.AsEnumerable().Reverse().Take(16))text.AppendLine($"[color=#8fa38b]{s.Clock.Epoch.AddMinutes(ev.Tick):dd.MM HH:mm}[/color]\n{Safe(ev.Text)}\n");
         return text.ToString();
     }
 
     private static string DescribeSystems(SimulationSession session)
     {
+        var s=session.State;
+        var e=s.Entities;
+        var decisions=e.Store<DecisionComponent>().All.Select(x=>x.Value).ToArray();
+        var activePlans=decisions.Count(x=>x.Plan.Count>0);
+        var averagePlan=decisions.Length==0?0:decisions.Average(x=>x.Plan.Count);
+        var failures=decisions.Sum(x=>x.Failures);
         var text=new StringBuilder();
         text.AppendLine($"последний тик {session.LastTickMilliseconds:F2} мс");
-        foreach(var p in session.Profiles.Values)
+        text.AppendLine($"активных планов {activePlans} · средняя длина {averagePlan:F1}");
+        text.AppendLine($"ошибок планов {failures} · резервов {session.Reservations.Entries.Count}");
+        text.AppendLine($"жителей {s.Population} · предметов {e.Store<ItemComponent>().Count} · растений {e.Store<PlantComponent>().Count}");
+        text.AppendLine($"строек {e.Store<ConstructionComponent>().All.Count(x=>!x.Value.Finished)} · огней {e.Store<FireComponent>().Count}");
+        foreach(var p in session.Profiles.Values.OrderByDescending(x=>x.AverageMilliseconds))
         {
             Section(text,p.Name);
-            text.AppendLine($"среднее {p.AverageMilliseconds:F3} мс\nмаксимум {p.MaxMilliseconds:F3} мс\nобработано {p.Entities} · вызовов {p.Calls}");
+            text.AppendLine($"последний {p.LastMilliseconds:F3} мс\nсреднее {p.AverageMilliseconds:F3} мс · максимум {p.MaxMilliseconds:F3} мс\nобработано {p.Entities} · вызовов {p.Calls}");
         }
         return text.ToString();
     }
+
     private static string Safe(string value)=>value.Replace("[","[lb]");
-    private static void Section(StringBuilder text,string title)=>text.AppendLine("\n[color=#8f9d87]"+title.ToUpperInvariant()+"[/color]");
+    private static void Section(StringBuilder text,string title)=>text.AppendLine("\n[color=#b8c7a4]"+title.ToUpperInvariant()+"[/color]");
     private static string BiomeName(Biome biome)=>biome switch
     {
         Biome.Forest=>"лес",Biome.Meadow=>"луг",Biome.Marsh=>"болото",Biome.Beach=>"берег",Biome.Mountain=>"горы",Biome.Alpine=>"высокогорье",_=>"море"
