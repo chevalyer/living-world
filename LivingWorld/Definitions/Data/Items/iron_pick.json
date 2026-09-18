@@ -21,7 +21,8 @@
       },
       "skill": "smithing",
       "knowledge": "smithing",
-      "minutes": 90
+      "minutes": 90,
+      "capability": "metalworking"
     }
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "id": "millstone",
+  "name": "ручная мельница",
+  "placement": "indoor",
+  "inputs": {
+    "granite": 4,
+    "plank": 1
+  },
+  "capabilities": [
+    "milling"
+  ],
+  "knowledge": "crafting",
+  "skill": "crafting",
+  "workMinutes": 55,
+  "shape": "mill",
+  "color": "#88857d",
+  "accent": "#c8c0a9"
+}

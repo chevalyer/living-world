@@ -10,5 +10,6 @@ public sealed record RecipeDefinition
     public string Skill { get; init; } = "crafting";
     public string Knowledge { get; init; } = "crafting";
     public string Tool { get; init; } = "";
+    public string Capability { get; init; } = "";
     public float Minutes { get; init; } = 30;
 }

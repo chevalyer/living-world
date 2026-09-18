@@ -17,6 +17,7 @@ public static class DefinitionFingerprint
         foreach(var d in catalog.Plants.Values)Add("plant:"+d.Id,d);
         foreach(var d in catalog.Recipes.Values)Add("recipe:"+d.Id,d);
         foreach(var d in catalog.Buildings.Values)Add("building:"+d.Id,d);
+        foreach(var d in catalog.Facilities.Values)Add("facility:"+d.Id,d);
         Add("names",catalog.Names);return result;
     }
 }

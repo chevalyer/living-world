@@ -1,0 +1,27 @@
+{
+  "id": "plank",
+  "name": "доска",
+  "material": "wood",
+  "mass": 0.8,
+  "volume": 1,
+  "durability": 100,
+  "tags": [
+    "construction",
+    "woodwork"
+  ],
+  "recipes": [
+    {
+      "id": "plank",
+      "name": "распилить бревно",
+      "operation": "cut",
+      "inputs": {
+        "log": 1
+      },
+      "count": 3,
+      "skill": "woodworking",
+      "knowledge": "crafting",
+      "tool": "chop",
+      "minutes": 22
+    }
+  ]
+}

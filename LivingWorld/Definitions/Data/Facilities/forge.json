@@ -1,0 +1,19 @@
+{
+  "id": "forge",
+  "name": "горн",
+  "placement": "outdoor",
+  "inputs": {
+    "granite": 8,
+    "log": 2
+  },
+  "capabilities": [
+    "metalworking",
+    "heat"
+  ],
+  "knowledge": "building",
+  "skill": "smithing",
+  "workMinutes": 120,
+  "shape": "forge",
+  "color": "#67645e",
+  "accent": "#d78a4d"
+}

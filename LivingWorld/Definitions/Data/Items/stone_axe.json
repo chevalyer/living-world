@@ -21,7 +21,8 @@
       },
       "skill": "crafting",
       "knowledge": "crafting",
-      "minutes": 35
+      "minutes": 35,
+      "capability": "workbench"
     }
   ]
 }

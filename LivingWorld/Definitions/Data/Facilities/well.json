@@ -1,0 +1,18 @@
+{
+  "id": "well",
+  "name": "колодец",
+  "placement": "outdoor",
+  "inputs": {
+    "granite": 6,
+    "log": 2
+  },
+  "capabilities": [
+    "water"
+  ],
+  "knowledge": "building",
+  "skill": "building",
+  "workMinutes": 110,
+  "shape": "well",
+  "color": "#777b77",
+  "accent": "#9b7a50"
+}

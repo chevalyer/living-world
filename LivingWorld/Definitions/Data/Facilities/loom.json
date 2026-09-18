@@ -1,0 +1,18 @@
+{
+  "id": "loom",
+  "name": "ткацкий станок",
+  "placement": "indoor",
+  "inputs": {
+    "plank": 4,
+    "fiber": 2
+  },
+  "capabilities": [
+    "textile"
+  ],
+  "knowledge": "crafting",
+  "skill": "crafting",
+  "workMinutes": 60,
+  "shape": "loom",
+  "color": "#826848",
+  "accent": "#d6c59c"
+}
