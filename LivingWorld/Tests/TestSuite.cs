@@ -68,6 +68,18 @@ public static class TestSuite
                 var name=generator.Generate(r, i%2==0?"male":"female"); Assert(!(name.First+name.Last).Contains('ё')&&!(name.First+name.Last).Contains('Ё'), "name restriction");
             }
         });
+        Test("new adults start without magically created clothing", ()=>
+        {
+            var state=new WorldGenerator().Generate(D,1847,64,4);
+            foreach(var id in state.Entities.Store<IdentityComponent>().Ids())
+            {
+                Equal(0,state.Entities.Get<EquipmentComponent>(id).Items.Count);
+                var inventory=state.Entities.Get<InventoryComponent>(id).Items
+                    .Select(item=>state.Entities.Get<ItemComponent>(item).Definition).ToArray();
+                Assert(!inventory.Any(item=>D.Items[item].Slots.Length>0),"spawned adult received ready clothing");
+                Assert(inventory.Contains("stone_axe")&&inventory.Contains("stone_pick"),"bootstrap tools missing");
+            }
+        });
         Test("age uses the birthday", ()=>
         {
             var clock=new SimulationClock
