@@ -150,7 +150,11 @@ public sealed class RenderSnapshotBuilder
             if(definition.Length==0)definition=recipe.Inputs.Keys.FirstOrDefault()??"";
         }
         else if(step.Action=="trade")definition=step.Argument.Split('|',2)[0];
-        else if(step.Action is "sow" or "eat" or "give" or "care" or "deposit" or "refuel" or "light_fire" or "repair")
+        else if(step.Action=="sow"&&session.Definitions.Plants.TryGetValue(step.Argument,out var crop))
+            definition=crop.Product;
+        else if(step.Action=="build_facility"&&session.Definitions.Facilities.TryGetValue(step.Argument,out var facility))
+            definition=facility.Inputs.Keys.FirstOrDefault()??"";
+        else if(step.Action is "eat" or "give" or "care" or "deposit" or "refuel" or "light_fire" or "repair")
             definition=session.Definitions.Items.ContainsKey(step.Argument)?step.Argument:"";
 
         if(definition.Length==0||!session.Definitions.Items.TryGetValue(definition,out var item))return ("","","");

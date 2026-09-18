@@ -298,7 +298,11 @@ public partial class SimulationHud : CanvasLayer
     }
 
     public bool InterfaceVisible=>_root.Visible;
-    public void ToggleInterface()=>_root.Visible=!_root.Visible;
+    public void ToggleInterface()
+    {
+        _root.Visible=!_root.Visible;
+        Game.View.QueueRedraw();
+    }
     public void Status(string message)=>_status.Text=message;
 
 

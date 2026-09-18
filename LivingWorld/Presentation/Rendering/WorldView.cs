@@ -102,7 +102,7 @@ public partial class WorldView : Node2D
             else DrawRect(area, TerrainTexture.ColorFor(chunk.Tiles[136]));
         }
         VisibleChunks = _visible.Count;
-        DrawMapOverlay(world, margin);
+        if(Game.Hud.InterfaceVisible)DrawMapOverlay(world,margin);
         VisibleObjects = 0;
         if (CurrentLod == 0)
         {
@@ -119,8 +119,8 @@ public partial class WorldView : Node2D
         var alpha = world.Paused ? 1 : (float)Math.Clamp(Stopwatch.GetElapsedTime(_publicationTime).TotalSeconds * SimulationRunner.PublicationsPerSecond, 0, 1);
         foreach (var person in _people) DrawPerson(person, world.Tick, alpha);
         VisibleObjects += _people.Count;
-        if (Game.Overlay == MapOverlay.Settlements || Game.SelectedSettlement != 0) DrawSettlements(world, margin);
-        if (Game.DebugView) DrawDebug(world, margin);
+        if(Game.Hud.InterfaceVisible&&(Game.Overlay==MapOverlay.Settlements||Game.SelectedSettlement!=0))DrawSettlements(world,margin);
+        if(Game.Hud.InterfaceVisible&&Game.DebugView)DrawDebug(world,margin);
         var night = Math.Clamp((.25f - world.Sunlight) * .65f, 0, .16f);
         if (night > 0) DrawRect(rect, new Color(.04f, .07f, .18f, night));
         // Unseen textures may be freed without touching simulation entities or their updates.
@@ -296,7 +296,7 @@ public partial class WorldView : Node2D
     {
         var target = ToVector(person.Tile);
         var p = _previousPeople.TryGetValue(person.Id, out var previous) ? previous.Lerp(target, alpha) : target;
-        var selected = Game.Selected == person.Id;
+        var selected=Game.Hud.InterfaceVisible&&Game.Selected==person.Id;
         if (CurrentLod > 0)
         {
             var size = CurrentLod == 2 ? 2 / Game.Camera.Zoom.X : 5;

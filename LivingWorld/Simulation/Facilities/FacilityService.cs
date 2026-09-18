@@ -109,5 +109,8 @@ public static class FacilityService
 
     private static bool Occupied(SimulationSession session,GridPoint p)=>session.Spatial.Query(p,0).Any(id=>
         session.State.Entities.Get<PositionComponent>(id).Tile==p&&
-        (session.State.Entities.Has<FacilityComponent>(id)||session.State.Entities.Has<StorageComponent>(id)));
+        (session.State.Entities.Has<FacilityComponent>(id)||session.State.Entities.Has<StorageComponent>(id)||
+         session.State.Entities.Has<IdentityComponent>(id)||session.State.Entities.Has<FireComponent>(id)||
+         session.State.Entities.Has<ResourceComponent>(id)||session.State.Entities.Has<PlantComponent>(id)||
+         session.State.Entities.Has<ConstructionComponent>(id)));
 }

@@ -10,6 +10,16 @@ public static class TestSuite
     public static int Run()
     {
         Test("definition references", ()=>D.Validate());
+        Test("world generation guarantees production knowledge coverage", ()=>
+        {
+            var state=new WorldGenerator().Generate(D,1847,64,1);
+            var founder=state.Entities.Store<IdentityComponent>().Ids().Single();
+            var facts=state.Entities.Get<KnowledgeComponent>(founder).Facts;
+            foreach(var fact in D.Recipes.Values.Select(x=>x.Knowledge)
+                .Concat(D.Facilities.Values.Select(x=>x.Knowledge))
+                .Where(x=>!string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.Ordinal))
+                Assert(facts.Contains(fact),"missing bootstrap knowledge "+fact);
+        });
         Test("world generator honors requested population", ()=>
         {
             var state=new WorldGenerator().Generate(D,1847,64,99);
@@ -277,6 +287,14 @@ public static class TestSuite
             var person=snapshot.People.Single(x=>x.Id==id);
             Equal("axe",person.HeldShape);
             Assert(person.HeldColor.Length>0,"held item has no render color");
+        });
+        Test("render snapshot shows seeds during sowing", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"grain");
+            s.State.Entities.Get<DecisionComponent>(id).Plan=[new(){Action="sow",Argument="wheat",Position=new(6,5)}];
+            var snapshot=new LivingWorld.Presentation.RenderSnapshotBuilder().Capture(s,1,true,1,0,new(),force:true);
+            Equal("seed",snapshot.People.Single(x=>x.Id==id).HeldShape);
         });
         Test("render snapshot exposes immutable settlement data", ()=>
         {
@@ -566,6 +584,16 @@ public static class TestSuite
                 Assert(D.Facilities.ContainsKey(id),"missing facility "+id);
             Assert(D.Recipes["iron_ingot"].Capability=="metalworking","smelting is not capability driven");
             Assert(D.Recipes["bread"].Capability=="baking","bread is not capability driven");
+        });
+        Test("facility placement rejects occupied cells", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            var definition=D.Facilities["bed"];
+            var site=FacilityService.FindSite(s,id,definition)!.Value;
+            var occupant=Adult(s,site);
+            Assert(!FacilityService.CanPlace(s,id,definition,site),"facility allowed placement through another NPC");
+            Assert(s.State.Entities.Get<PositionComponent>(occupant).Tile==site,"test occupant moved");
         });
         Test("building a bed consumes materials and creates a physical facility", ()=>
         {
