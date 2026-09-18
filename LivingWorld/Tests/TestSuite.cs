@@ -511,6 +511,29 @@ public static class TestSuite
             var context=ContextBuilder.Create(s,id,false);
             Assert(context.Air>context.OutdoorAir,"planner ignored fire heat");
         });
+        Test("planner can build missing furniture from production inputs", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            Give(s,id,"stone_axe");
+            Give(s,id,"log"); Give(s,id,"log");
+            Give(s,id,"fiber"); Give(s,id,"fiber");
+            var context=ContextBuilder.Create(s,id);
+            var desire=new FacilityEvaluator().Evaluate(context).First(x=>x.Fact=="facility:bed");
+            var plan=s.Planner.Find(context,s.Actions.All.Where(a=>!a.RequiresWork||context.CanWork)
+                .SelectMany(a=>a.Options(context)).ToList(),desire);
+            Assert(plan is not null,"no plan for missing bed");
+            var actions=plan!.Steps.Select(x=>x.Action).ToArray();
+            Assert(actions.Count(x=>x=="craft")>=2,"bed plan did not create enough planks");
+            Assert(actions.Contains("build_facility"),"bed plan never builds furniture");
+        });
+        Test("facility use is reservable without locking local actions", ()=>
+        {
+            var reservations=new ReservationService();
+            Assert(reservations.Claim(42,1,0),"facility reservation failed");
+            Assert(!reservations.Claim(42,2,1),"two NPCs reserved one bed");
+            Assert(new SleepAction().Exclusive&&new CraftAction().Exclusive,"facility actions are not marked exclusive");
+        });
         Test("facility definitions are data driven and validated", ()=>
         {
             foreach(var id in new[]{"bed","chest","workbench","loom","millstone","forge","oven","well"})

@@ -39,7 +39,7 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                         movement.Path.Clear();
                         movement.Destination=null;
                     }
-                    if((intended.Exclusive||intended.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
+                    if(((intended.Exclusive&&step.Target!=0)||intended.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
                     {
                         session.Replan(actor,intended.EngagesTarget?"собеседник уже занят":"ресурс уже занят");
                         continue;
@@ -107,7 +107,7 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                 session.FailPlan(actor, "цель вне досягаемости");
                 continue;
             }
-            if((action.Exclusive||action.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
+            if(((action.Exclusive&&step.Target!=0)||action.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
             {
                 var other=session.Reservations.Entries.GetValueOrDefault(step.Target)?.Actor??0;
                 if(other!=0&&s.Clock.Tick-decision.LastFailureTick>120&&!action.EngagesTarget)

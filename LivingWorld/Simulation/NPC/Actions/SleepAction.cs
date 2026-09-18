@@ -3,6 +3,7 @@ public sealed class SleepAction : SimAction
 {
     public override string Id=>"sleep";
     public override string Label=>"спит";
+    public override bool Exclusive=>true;
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         foreach(var facility in c.Facilities("sleep"))

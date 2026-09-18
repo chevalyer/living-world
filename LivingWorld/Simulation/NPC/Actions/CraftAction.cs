@@ -4,6 +4,7 @@ public sealed class CraftAction : SimAction
     public override string Id=>"craft";
     public override string Label=>"изготавливает предмет";
     public override bool RequiresWork=>true;
+    public override bool Exclusive=>true;
 
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
@@ -20,7 +21,11 @@ public sealed class CraftAction : SimAction
                 op.Requires=recipe.Inputs.Select(x=>new FactRequirement(Item(x.Key),x.Value)).ToList();
                 op.Effects=recipe.Inputs.Select(x=>new FactEffect(Item(x.Key),-x.Value)).ToList();
                 op.Effects.Add(new(Item(recipe.Output),recipe.Count));
-                if(recipe.Tool.Length>0)op.Requires.Add(new("tool:"+recipe.Tool,1));
+                if(recipe.Tool.Length>0)
+                {
+                    op.Requires.Add(new("tool:"+recipe.Tool,1));
+                    op.Effects.Add(new("tool:"+recipe.Tool,-1));
+                }
                 if(recipe.Operation=="heat"&&station is null)op.Requires.Add(new("heat",1));
                 var outputDefinition=c.Definitions.Items[recipe.Output];
                 if(outputDefinition.Calories>0)
