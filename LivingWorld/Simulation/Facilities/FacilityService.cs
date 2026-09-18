@@ -58,7 +58,7 @@ public static class FacilityService
             }
         }
         return candidates.OrderBy(p=>p.Distance(actorPosition)).ThenBy(p=>p.Distance(center))
-            .ThenBy(p=>p.Y).ThenBy(p=>p.X).Cast<GridPoint?>().FirstOrDefault();
+            .ThenBy(p=>p.Y).ThenBy(p=>p.X).Select(p=>(GridPoint?)p).FirstOrDefault();
     }
 
     public static bool CanPlace(SimulationSession session,int actor,FacilityDefinition definition,GridPoint position)
