@@ -39,6 +39,9 @@ try
         facility_counts=session.State.Entities.Store<FacilityComponent>().All
             .GroupBy(x=>x.Value.Definition).OrderBy(x=>x.Key,StringComparer.Ordinal)
             .ToDictionary(g=>g.Key,g=>g.Count()),
+        item_counts=session.State.Entities.Store<ItemComponent>().All
+            .GroupBy(x=>x.Value.Definition).OrderBy(x=>x.Key,StringComparer.Ordinal)
+            .ToDictionary(g=>g.Key,g=>g.Count()),
         action_failures=session.State.Entities.Store<DecisionComponent>().All.Sum(x=>x.Value.Failures),
         failure_reasons=session.FailureReasons.OrderByDescending(x=>x.Value).ToDictionary(x=>x.Key,x=>x.Value),
         failure_actions=session.FailureActions.OrderByDescending(x=>x.Value).ToDictionary(x=>x.Key,x=>x.Value),

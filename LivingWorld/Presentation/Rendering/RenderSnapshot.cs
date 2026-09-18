@@ -158,7 +158,8 @@ public sealed class RenderSnapshotBuilder
             definition=session.Definitions.Items.ContainsKey(step.Argument)?step.Argument:"";
 
         if(definition.Length==0||!session.Definitions.Items.TryGetValue(definition,out var item))return ("","","");
-        var shape=tool=="chop"?"axe":tool=="mine"?"pick":
+        var shape=step.Action=="sow"?"seed":
+            tool=="chop"?"axe":tool=="mine"?"pick":
             item.Tags.Contains("construction",StringComparer.Ordinal)||item.Tags.Contains("fuel",StringComparer.Ordinal)?"bulk":
             item.Tags.Contains("food",StringComparer.Ordinal)?"food":
             item.Tags.Contains("seed",StringComparer.Ordinal)?"seed":"item";
