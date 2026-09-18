@@ -31,6 +31,7 @@ public sealed class DefinitionCatalog
             if(string.IsNullOrWhiteSpace(facility.Id)||facility.WorkMinutes<=0||facility.Inputs.Count==0||
                facility.Inputs.Any(x=>!Items.ContainsKey(x.Key)||x.Value<=0)||
                facility.Placement is not ("indoor" or "outdoor")||
+               facility.Access is not ("household" or "community")||
                facility.StorageMass<0||facility.StorageVolume<0||facility.RestMultiplier<=0||
                facility.MinMoisture is <0 or >1)
                 throw new InvalidDataException($"Invalid facility: {facility.Id}");

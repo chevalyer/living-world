@@ -14,5 +14,6 @@
   "workMinutes": 60,
   "shape": "loom",
   "color": "#826848",
-  "accent": "#d6c59c"
+  "accent": "#d6c59c",
+  "access": "community"
 }

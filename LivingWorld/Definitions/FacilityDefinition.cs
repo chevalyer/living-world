@@ -4,6 +4,7 @@ public sealed record FacilityDefinition
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
     public string Placement { get; init; } = "indoor";
+    public string Access { get; init; } = "household";
     public Dictionary<string,int> Inputs { get; init; } = [];
     public string[] Capabilities { get; init; } = [];
     public string Knowledge { get; init; } = "crafting";

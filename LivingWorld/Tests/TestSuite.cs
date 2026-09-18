@@ -600,6 +600,16 @@ public static class TestSuite
             Assert(new SleepAction().Execute(s,id,new(){Position=site}),"floor sleep failed");
             Assert(bedFatigue<needs.Fatigue,"bed did not improve rest");
         });
+        Test("community workstations are usable across households", ()=>
+        {
+            var(s,owner)=Fixture();
+            BuildHome(s,owner); new RoomSystem().Update(s);
+            for(var i=0;i<5;i++)Give(s,owner,"plank");
+            var site=FacilityService.FindSite(s,owner,D.Facilities["workbench"])!.Value;
+            var workbench=FacilityService.Build(s,owner,"workbench",site);
+            var outsider=Adult(s,site+new GridPoint(1,0));
+            Assert(FacilityService.CanUse(s,outsider,workbench),"community workbench stayed household private");
+        });
         Test("chest is household storage rather than free global storage", ()=>
         {
             var(s,id)=Fixture();

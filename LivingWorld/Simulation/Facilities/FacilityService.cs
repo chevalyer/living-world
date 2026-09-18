@@ -11,8 +11,8 @@ public static class FacilityService
     public static bool CanUse(SimulationSession session,int actor,int facility)
     {
         var component=session.State.Entities.Try<FacilityComponent>(facility);
-        if(component is null)return false;
-        if(component.Project==0)return true;
+        if(component is null||!session.Definitions.Facilities.TryGetValue(component.Definition,out var definition))return false;
+        if(definition.Access=="community"||component.Project==0)return true;
         return session.State.Entities.Get<FamilyComponent>(actor).HomeProject==component.Project;
     }
 

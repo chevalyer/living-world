@@ -12,7 +12,7 @@ public sealed class FacilityEvaluator : ISituationEvaluator
         foreach(var definition in c.Definitions.Facilities.Values)
         {
             if(c.Known.Any(o=>o.Kind=="facility"&&o.Definition==definition.Id&&
-                (o.Project==0||o.Project==c.Family.HomeProject)))continue;
+                (definition.Access=="community"||o.Project==0||o.Project==c.Family.HomeProject)))continue;
             if(!c.Knowledge.Facts.Contains(definition.Knowledge))continue;
             var urgency=.02f;
             foreach(var capability in definition.Capabilities)

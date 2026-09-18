@@ -15,5 +15,6 @@
   "workMinutes": 90,
   "shape": "oven",
   "color": "#858178",
-  "accent": "#c89b61"
+  "accent": "#c89b61",
+  "access": "community"
 }

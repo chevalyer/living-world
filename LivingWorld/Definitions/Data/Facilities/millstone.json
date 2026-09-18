@@ -14,5 +14,6 @@
   "workMinutes": 55,
   "shape": "mill",
   "color": "#88857d",
-  "accent": "#c8c0a9"
+  "accent": "#c8c0a9",
+  "access": "community"
 }

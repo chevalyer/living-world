@@ -140,7 +140,9 @@ public sealed class ActionExecutionSystem : ISimulationSystem
 
     private static bool Transient(ISimAction action,string reason)=>
         action.EngagesTarget||reason is "предмет уже забрали" or "место больше не подходит" or
-        "источник тепла изменился" or "место больше не охлаждает" or "ресурс уже занят" or "стройка уже завершена";
+        "источник тепла изменился" or "место больше не охлаждает" or "ресурс уже занят" or "стройка уже завершена" or
+        "место для объекта больше не подходит" or "рабочее место или материалы изменились" or
+        "место для сна изменилось" or "источник воды недоступен";
     private static void Complete(SimulationSession session, int actor)
     {
         session.Interactions.End(actor);

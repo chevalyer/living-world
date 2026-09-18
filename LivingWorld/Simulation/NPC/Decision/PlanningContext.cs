@@ -32,12 +32,16 @@ public sealed class PlanningContext
     public float MaxVolume { get; init; } = 40;
     public static string ItemFact(string item)=>"item:"+item;
     public IEnumerable<Observation> OfKind(string kind)=>Known.Where(o=>o.Kind==kind&&o.UnreachableUntil<=Tick).OrderBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
+    private bool FacilityAccessible(Observation o)
+    {
+        if(o.Project==0||o.Project==Family.HomeProject)return true;
+        return o.Kind=="facility"&&Definitions.Facilities.TryGetValue(o.Definition,out var definition)&&definition.Access=="community";
+    }
     public IEnumerable<Observation> Facilities(string capability)=>Known.Where(o=>o.Kind=="facility"&&o.UnreachableUntil<=Tick&&
-        o.Capabilities.Contains(capability,StringComparer.Ordinal)&&(o.Project==0||o.Project==Family.HomeProject))
+        o.Capabilities.Contains(capability,StringComparer.Ordinal)&&FacilityAccessible(o))
         .OrderBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
     public IEnumerable<Observation> Storages()=>Known.Where(o=>o.UnreachableUntil<=Tick&&
-        (o.Kind=="storage"||o.Kind=="facility"&&o.Capabilities.Contains("storage",StringComparer.Ordinal))&&
-        (o.Project==0||o.Project==Family.HomeProject))
+        (o.Kind=="storage"||o.Kind=="facility"&&o.Capabilities.Contains("storage",StringComparer.Ordinal))&&FacilityAccessible(o))
         .OrderByDescending(o=>o.Kind=="facility").ThenBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
     public PlanningState InitialState()
     {

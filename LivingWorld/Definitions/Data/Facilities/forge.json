@@ -15,5 +15,6 @@
   "workMinutes": 120,
   "shape": "forge",
   "color": "#67645e",
-  "accent": "#d78a4d"
+  "accent": "#d78a4d",
+  "access": "community"
 }
