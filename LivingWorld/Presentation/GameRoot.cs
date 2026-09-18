@@ -19,7 +19,20 @@ public partial class GameRoot : Node2D
     private double _hudElapsed;
     private SimulationRunner? _runner;
     private long _generation = -1;
-    private string SavePath => ProjectSettings.GlobalizePath("user://world.save.json");
+    private int _saveSlot=1;
+    public int SaveSlot
+    {
+        get=>_saveSlot;
+        set=>_saveSlot=Math.Clamp(value,1,3);
+    }
+    private string SavePath => ProjectSettings.GlobalizePath("user://"+SaveFileName(SaveSlot));
+    public static string SaveFileName(int slot)=>slot switch
+    {
+        1=>"world.save.json",
+        2=>"world-slot-2.save.json",
+        3=>"world-slot-3.save.json",
+        _=>throw new ArgumentOutOfRangeException(nameof(slot))
+    };
 
     public bool Paused
     {
@@ -236,7 +249,9 @@ public partial class GameRoot : Node2D
             else await _runner.SaveAsync(path);
             if (_closing) return;
             if (load) { _paused = true; AcceptSnapshot(); }
-            Hud.Status(load ? "мир загружен · пробел — продолжить" : "мир сохранен · F9 — загрузить");
+            Hud.Status(load
+                ? $"слот {SaveSlot} загружен · пробел — продолжить"
+                : $"мир сохранен в слот {SaveSlot}");
         }
         catch (Exception ex) { if (!_closing) Report(load ? "Загрузка не удалась" : "Сохранение не удалось", ex); }
         finally { Busy = false; }
