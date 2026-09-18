@@ -11,7 +11,7 @@ public sealed class DiscardSpoiledAction : SimAction
             op.Effects=[new("cleaned",1,true)];
             yield return op;
         }
-        foreach(var storage in c.OfKind("storage").Where(o=>o.Spoiled>0))
+        foreach(var storage in c.Storages().Where(o=>o.Spoiled>0))
         {
             var op=Option(storage.Position,storage.Entity,duration:2);
             op.Effects=[new("cleaned",1,true)];

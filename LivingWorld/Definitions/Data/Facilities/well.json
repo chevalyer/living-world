@@ -14,5 +14,6 @@
   "workMinutes": 110,
   "shape": "well",
   "color": "#777b77",
-  "accent": "#9b7a50"
+  "accent": "#9b7a50",
+  "minMoisture": 0.55
 }

@@ -12,18 +12,27 @@ public static class StorageService
         session.Spatial.Add(id,p);
         return id;
     }
+
+    public static bool CanUse(SimulationSession session,int actor,int storage)
+    {
+        var component=session.State.Entities.Try<StorageComponent>(storage);
+        if(component is null)return false;
+        return component.Project==0||session.State.Entities.Get<FamilyComponent>(actor).HomeProject==component.Project;
+    }
+
     public static bool Deposit(SimulationSession session,int actor,int storage,int item)
     {
         var e=session.State.Entities;
-        if(!e.Has<StorageComponent>(storage))return false;
+        if(!CanUse(session,actor,storage))return false;
         if(!session.Inventory.Transfer(actor,storage,item,"deposit"))return false;
         e.Get<OwnershipComponent>(item).Owner=0;
         return true;
     }
+
     public static bool Take(SimulationSession session,int actor,int storage,string definition)
     {
         var e=session.State.Entities;
-        if(!e.Has<StorageComponent>(storage))return false;
+        if(!CanUse(session,actor,storage))return false;
         var item=session.Inventory.Items(storage)
             .Where(id=>e.Get<ItemComponent>(id).Definition==definition&&(e.Get<OwnershipComponent>(id).Owner==0||e.Get<OwnershipComponent>(id).Owner==actor))
             .Where(id=>session.Definitions.Items[definition].Calories<=0||e.Get<ItemComponent>(id).Freshness>=.1f)
