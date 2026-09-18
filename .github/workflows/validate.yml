@@ -69,6 +69,25 @@ jobs:
               print(path.name, "population", data["population"], "failures", data["action_failures"], "deaths", data["deaths"])
           PY
 
+      - name: 320 day lifecycle soak
+        run: |
+          dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
+            --seed 1847 --size 64 --npcs 14 --ticks 460800 --json artifacts/lifecycle.json
+
+      - name: inspect lifecycle
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("artifacts/lifecycle.json").read_text())
+          assert data["simulation_tick"]==460800, "lifecycle simulation incomplete"
+          assert data["population"]>0, "lifecycle population collapsed"
+          print("lifecycle population", data["population"])
+          print("lifecycle deaths", data["deaths"])
+          print("lifecycle failures", data["action_failures"])
+          print("lifecycle failure reasons", data["failure_reasons"])
+          PY
+
       - name: install godot 4.7.1 .net
         run: |
           curl -L --fail --retry 3 \
