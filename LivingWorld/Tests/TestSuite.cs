@@ -204,6 +204,19 @@ public static class TestSuite
             Assert(settlements.Select(x=>x.Name).Distinct().Count()==2, "settlement names collided");
             Assert(settlements.All(x=>x.Members==1), "resident assigned to multiple settlements");
         });
+        Test("unhomed resident belongs to only one nearby settlement", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s,new(1,1));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s,new(19,19));
+            var homeB=FinishedProject(s,new(19,19));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            _=Adult(s,new(10,10));
+            var settlements=SettlementAnalyzer.DescribeAll(s);
+            Equal(2,settlements.Count);
+            Equal(3,settlements.Sum(x=>x.Members));
+        });
         Test("render snapshot exposes immutable settlement data", ()=>
         {
             var(s, first)=Fixture();
