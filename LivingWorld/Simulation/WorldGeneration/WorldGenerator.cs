@@ -18,10 +18,30 @@ public sealed class WorldGenerator
         state.Start=ChooseStart(state);
         var candidates=Reachable(state.Map, state.Start, Math.Max(80, population*5));
         var factory=new NpcFactory(defs);
-        for (var i=0; i<population; i++) factory.SpawnAdult(state, candidates[i%candidates.Count]);
+        for(var i=0;i<population;i++)factory.SpawnAdult(state,candidates[i%candidates.Count]);
+        EnsureProductionKnowledge(state,defs);
         state.Log($"Новый мир. Сид {seed}. Поселенцев: {population}.");
         return state;
     }
+    private static void EnsureProductionKnowledge(WorldState state,DefinitionCatalog definitions)
+    {
+        var founders=state.Entities.Store<IdentityComponent>().Ids()
+            .Where(id=>state.Clock.Age(state.Entities.Get<IdentityComponent>(id).BirthDate)>=18)
+            .OrderBy(id=>id).ToArray();
+        if(founders.Length==0)return;
+        var required=definitions.Recipes.Values.Select(x=>x.Knowledge)
+            .Concat(definitions.Facilities.Values.Select(x=>x.Knowledge))
+            .Where(x=>!string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
+        var cursor=0;
+        foreach(var fact in required)
+        {
+            if(founders.Any(id=>state.Entities.Get<KnowledgeComponent>(id).Facts.Contains(fact)))continue;
+            state.Entities.Get<KnowledgeComponent>(founders[cursor%founders.Length]).Facts.Add(fact);
+            cursor++;
+        }
+    }
+
     private static GridPoint ChooseStart(WorldState state)
     {
         var map=state.Map;

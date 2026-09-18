@@ -11,7 +11,7 @@ public sealed class PickUpAction : SimAction
             var op=Option(o.Position, o.Entity, o.Product);
             op.Requires=[new(Source(o.Entity), 1)];
             op.Effects=[new(Source(o.Entity), -1), new(Item(o.Product), 1)];
-            AddCapabilities(c, op, o.Product);
+            AddCapabilities(c,op,o.Product,o);
             yield return op;
         }
         foreach (var o in c.Known.Where(o=>o.Kind is "plant" or "resource").OrderBy(o=>o.Position.Distance(c.Position)).Take(30))
@@ -19,15 +19,39 @@ public sealed class PickUpAction : SimAction
             var op=Option(o.Position, o.Entity, o.Product);
             op.Requires=[new("ground:"+o.Entity+":"+o.Product, 1)];
             op.Effects=[new("ground:"+o.Entity+":"+o.Product, -1), new(Item(o.Product), 1)];
-            AddCapabilities(c, op, o.Product);
+            AddCapabilities(c,op,o.Product,null);
             yield return op;
         }
     }
-    private static void AddCapabilities(PlanningContext c, ActionOption op, string product)
+    private static void AddCapabilities(PlanningContext c,ActionOption op,string product,Observation? observed)
     {
         var d=c.Definitions.Items[product];
-        foreach (var tool in d.Tools)op.Effects.Add(new("tool:"+tool.Key, 1, true));
-        if (d.Calories>0)op.Effects.Add(new("stocked", 1, true));
+        var durability=observed?.Durability??d.Durability;
+        foreach(var tool in d.Tools)
+            if(durability>0)op.Effects.Add(new("tool:"+tool.Key,Math.Max(1,(int)MathF.Floor(durability/2)),true));
+        if(d.Calories>0)
+        {
+            var freshness=observed?.Freshness??1;
+            op.Effects.Add(new("food.reserve",(int)MathF.Max(1,d.Calories*freshness)));
+        }
+    }
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
+    {
+        reason="предмет уже забрали";
+        var e=s.State.Entities;
+        if(e.Try<ItemComponent>(step.Target) is { Holder:0 } direct&&e.Try<PositionComponent>(step.Target) is { } directPosition)
+        {
+            var owner=e.Get<OwnershipComponent>(step.Target).Owner;
+            return directPosition.Tile.Distance(e.Get<PositionComponent>(actor).Tile)<=1&&(owner==0||owner==actor)&&s.Inventory.CanCarry(actor,direct.Definition);
+        }
+        return s.Spatial.Query(step.Position,1).Any(id=>
+        {
+            var item=e.Try<ItemComponent>(id);
+            var position=e.Try<PositionComponent>(id);
+            if(item is null||item.Holder!=0||position?.Tile!=step.Position||item.Definition!=step.Argument)return false;
+            var owner=e.Get<OwnershipComponent>(id).Owner;
+            return (owner==0||owner==actor)&&s.Inventory.CanCarry(actor,item.Definition);
+        });
     }
     public override bool Execute(SimulationSession s, int actor, ActionStep step)
     {

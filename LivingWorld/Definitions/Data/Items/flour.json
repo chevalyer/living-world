@@ -1,0 +1,27 @@
+{
+  "id": "flour",
+  "name": "мука",
+  "material": "organic",
+  "mass": 0.4,
+  "volume": 0.6,
+  "durability": 100,
+  "shelfLifeDays": 120,
+  "tags": [
+    "ingredient"
+  ],
+  "recipes": [
+    {
+      "id": "flour",
+      "name": "смолоть зерно",
+      "operation": "grind",
+      "inputs": {
+        "grain": 2
+      },
+      "count": 1,
+      "skill": "farming",
+      "knowledge": "farming",
+      "capability": "milling",
+      "minutes": 22
+    }
+  ]
+}

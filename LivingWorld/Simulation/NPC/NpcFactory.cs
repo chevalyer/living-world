@@ -16,13 +16,10 @@ public sealed class NpcFactory(DefinitionCatalog definitions)
             inventory.Items.Add(item);
             if (wear)equipment.Items.Add(item);
         }
-        Give("linen_shirt", true);
-        Give("linen_trousers", true);
-        Give("boots", true);
-        Give(random.Chance(.5)?"leather_jacket":"wool_coat");
+        // Founders keep only primitive bootstrap tools. Clothing is produced by the simulation.
         Give("stone_axe");
         Give("stone_pick");
-        for (var i=0; i<4; i++)Give("grain");
+        Give("grain");
         state.Entities.Get<SkillsComponent>(id).Experience["building"]=random.Range(20f, 90f);
         return id;
     }

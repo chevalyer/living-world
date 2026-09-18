@@ -75,8 +75,15 @@ public sealed class SaveService
             {
                 // Names already live as strings on identities. New phonetic rules only affect future births.
                 // Verify the old manifest above, then permit this one presentation-only definition to evolve.
-                if (entry.Key == "names") continue;
-                if(!definitions.Manifest.TryGetValue(entry.Key,out var current)||current!=entry.Value)throw new InvalidDataException("Изменено старое определение "+entry.Key+"; нужна миграция.");
+                if(entry.Key=="names")continue;
+                if(definitions.Manifest.TryGetValue(entry.Key,out var current)&&current==entry.Value)continue;
+                if(entry.Key.StartsWith("recipe:",StringComparison.Ordinal))
+                {
+                    var id=entry.Key["recipe:".Length..];
+                    if(definitions.Recipes.TryGetValue(id,out var recipe)&&
+                       DefinitionFingerprint.LegacyRecipeHash(recipe)==entry.Value)continue;
+                }
+                throw new InvalidDataException("Изменено старое определение "+entry.Key+"; нужна миграция.");
             }
         }
         if (snapshot.Map.Width<1||snapshot.Map.Height<1||snapshot.Map.Width>512||snapshot.Map.Height>512||snapshot.Map.Tiles.Length!=snapshot.Map.Width*snapshot.Map.Height) throw new InvalidDataException("Повреждены размеры карты.");

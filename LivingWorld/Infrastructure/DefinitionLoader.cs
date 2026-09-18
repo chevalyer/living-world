@@ -87,6 +87,13 @@ public static class DefinitionLoader
             catalog.Buildings.Add(definition.Id, definition);
         }
 
+        foreach (var path in Files("Facilities"))
+        {
+            var definition=Read<FacilityDefinition>(path);
+            ValidateFileName(path, definition.Id);
+            catalog.Facilities.Add(definition.Id, definition);
+        }
+
         var nameFiles=Files("Names");
         if (nameFiles.Length!=1)throw new InvalidDataException("Definitions/Data/Names must contain exactly one JSON file.");
         catalog.Names=Read<NameDefinition>(nameFiles[0]);

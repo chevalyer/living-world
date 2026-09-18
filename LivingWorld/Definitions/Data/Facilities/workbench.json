@@ -1,0 +1,18 @@
+{
+  "id": "workbench",
+  "name": "верстак",
+  "placement": "indoor",
+  "inputs": {
+    "plank": 5
+  },
+  "capabilities": [
+    "workbench"
+  ],
+  "knowledge": "crafting",
+  "skill": "crafting",
+  "workMinutes": 50,
+  "shape": "workbench",
+  "color": "#795f42",
+  "accent": "#b99562",
+  "access": "community"
+}

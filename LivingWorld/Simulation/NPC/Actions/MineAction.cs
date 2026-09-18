@@ -12,8 +12,8 @@ public sealed class MineAction : SimAction
             var units=Math.Min(3, o.Quantity);
             var efficiency=c.Inventory.Where(x=>x.Item.Durability>0).Select(x=>c.Definitions.Items[x.Item.Definition].Tools.GetValueOrDefault("mine")*x.Item.Quality*x.Item.Sharpness).DefaultIfEmpty(.5f).Max();
             var op=Option(o.Position, o.Entity, o.Product, 18/Math.Max(.3f, efficiency+c.Skills.Level("mining")*.1f));
-            op.Requires=[new("tool:mine", 1), new(Source(o.Entity), units)];
-            op.Effects=[new(Source(o.Entity), -units), new("ground:"+o.Entity+":"+o.Product, units)];
+            op.Requires=[new("tool:mine",1),new(Source(o.Entity),units)];
+            op.Effects=[new(Source(o.Entity),-units),new("ground:"+o.Entity+":"+o.Product,units),new("tool:mine",-1)];
             op.Skill="mining";
             yield return op;
         }
@@ -32,7 +32,7 @@ public sealed class MineAction : SimAction
             s.State.Entities.Remove(step.Target);
             s.Spatial.Remove(step.Target);
         }
-        for (var i=0; i<units; i++)s.Inventory.Spawn(product, step.Position, actor);
+        for (var i=0; i<units; i++)s.Inventory.Spawn(product, step.Position);
         s.Inventory.WearTool(actor, "mine", 2);
         s.Events.Publish(new SkillUsedEvent(actor, "mining", 4));
         return true;

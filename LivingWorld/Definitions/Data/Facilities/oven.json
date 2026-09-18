@@ -1,0 +1,20 @@
+{
+  "id": "oven",
+  "name": "печь",
+  "placement": "indoor",
+  "inputs": {
+    "granite": 6,
+    "plank": 2
+  },
+  "capabilities": [
+    "baking",
+    "heat"
+  ],
+  "knowledge": "building",
+  "skill": "crafting",
+  "workMinutes": 90,
+  "shape": "oven",
+  "color": "#858178",
+  "accent": "#c89b61",
+  "access": "community"
+}

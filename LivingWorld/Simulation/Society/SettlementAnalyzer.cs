@@ -13,6 +13,8 @@ public sealed record SettlementSummary(
     int Families,
     float FoodCalories,
     int Projects,
+    int Facilities,
+    string[] Capabilities,
     string[] Specializations);
 
 public static class SettlementAnalyzer
@@ -63,6 +65,7 @@ public static class SettlementAnalyzer
         }
 
         var result=new List<SettlementSummary>(clusters.Count);
+        var usedNames=new HashSet<string>(StringComparer.Ordinal);
         for (var clusterIndex=0;clusterIndex<clusters.Count;clusterIndex++)
         {
             var cluster=clusters[clusterIndex];
@@ -111,6 +114,15 @@ public static class SettlementAnalyzer
                 !x.Value.Finished&&e.Try<PositionComponent>(x.Key) is { } position&&
                 (Inside(position.Tile)||position.Tile.Distance(center)<=ResidentReach));
 
+            var localFacilities=e.Store<FacilityComponent>().All
+                .Where(x=>e.Try<PositionComponent>(x.Key) is { } position&&Inside(position.Tile))
+                .ToArray();
+            var capabilities=localFacilities
+                .SelectMany(x=>session.Definitions.Facilities[x.Value.Definition].Capabilities)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(x=>x,StringComparer.Ordinal)
+                .ToArray();
+
             var specializations=members
                 .Select(id=>e.Get<SkillsComponent>(id).Experience
                     .OrderByDescending(x=>x.Value)
@@ -125,7 +137,7 @@ public static class SettlementAnalyzer
 
             result.Add(new(
                 anchor,
-                NameFor(s.Seed,anchor),
+                NameFor(session,anchor,usedNames),
                 center,
                 minX,minY,maxX,maxY,
                 cluster.Count,
@@ -133,6 +145,8 @@ public static class SettlementAnalyzer
                 families.Count,
                 food,
                 projects,
+                localFacilities.Length,
+                capabilities,
                 specializations));
         }
         return result.OrderBy(x=>x.Anchor).ToArray();
@@ -144,7 +158,7 @@ public static class SettlementAnalyzer
             .OrderByDescending(x=>x.Members)
             .ThenBy(x=>x.Anchor)
             .FirstOrDefault()
-            ??new(0,"нет поселений",session.State.Start,0,0,0,0,0,0,0,0,0,[]);
+            ??new(0,"нет поселений",session.State.Start,0,0,0,0,0,0,0,0,0,0,[],[]);
     }
 
     private static int[] LivingPeople(SimulationSession session)
@@ -183,20 +197,14 @@ public static class SettlementAnalyzer
         return result;
     }
 
-    private static string NameFor(int seed,int anchor)
+    private static string NameFor(SimulationSession session,int anchor,HashSet<string> used)
     {
-        string[] roots=["берез","соснов","реч","озер","камен","лугов","дубров","ясн","верх","тих","зареч","серебр","мелов","ветров","светл","родник"];
-        string[] endings=["овка","ино","ское","ье","ица","ово","бор","доль","поле","град","ное","ск"];
-        unchecked
+        var generator=new NameGenerator(session.Definitions.Names);
+        for(var attempt=0;;attempt++)
         {
-            uint hash=2166136261;
-            hash=(hash^(uint)seed)*16777619;
-            hash=(hash^(uint)anchor)*16777619;
-            var root=roots[(int)(hash%(uint)roots.Length)];
-            hash=(hash>>1)^(hash*2246822519u);
-            var ending=endings[(int)(hash%(uint)endings.Length)];
-            var value=root+ending;
-            return char.ToUpperInvariant(value[0])+value[1..];
+            var random=new DeterministicRandom(RandomService.Hash(session.State.Seed,$"settlement:{anchor}:{attempt}"));
+            var value=generator.GenerateWord(random,2,4);
+            if(used.Add(value))return value;
         }
     }
 

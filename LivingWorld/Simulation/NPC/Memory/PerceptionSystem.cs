@@ -58,8 +58,10 @@ public sealed class PerceptionSystem : ISimulationSystem
             if(!cooldowns.TryGetValue(key,out var previous)||observation.UnreachableUntil>previous)cooldowns[key]=observation.UnreachableUntil;
         }
         // Refresh visible observations, including absence; distant memories retain the last known values.
-        var home=e.Get<FamilyComponent>(actor).HomeProject;
-        memory.Observations.RemoveAll(o=>Visible(o.Position)||(o.Entity!=home&&s.Clock.Tick-o.SeenTick>1440*20));
+        var family=e.Get<FamilyComponent>(actor);
+        var home=family.HomeProject;
+        var dependentChildren=family.Children.Where(id=>e.Try<IdentityComponent>(id) is { } identity&&s.Clock.Age(identity.BirthDate)<3).ToHashSet();
+        memory.Observations.RemoveAll(o=>Visible(o.Position)||(o.Entity!=home&&!dependentChildren.Contains(o.Entity)&&s.Clock.Tick-o.SeenTick>1440*20));
         void Add(Observation observation)
         {
             observation.SeenTick=s.Clock.Tick;
@@ -98,26 +100,75 @@ public sealed class PerceptionSystem : ISimulationSystem
                 o.Kind="item";
                 o.Definition=item.Definition;
                 o.Product=item.Definition;
+                o.Freshness=item.Freshness;
+                o.Durability=item.Durability;
+                o.Quality=item.Quality;
                 o.Quantity=session.Definitions.Items[item.Definition].Calories>0&&item.Freshness<.1f?0:1;
             }
             else if (e.Try<IdentityComponent>(id) is { } identity&&e.Get<HealthComponent>(id).Alive)
             {
                 o.Kind="npc";
-                o.Need=e.Get<NeedsComponent>(id).Hunger;
+                var needs=e.Get<NeedsComponent>(id);
+                o.Need=needs.Hunger;
+                o.Thirst=needs.Thirst;
+                o.Fatigue=needs.Fatigue;
+                o.Health=e.Get<HealthComponent>(id).Value;
                 o.Age=s.Clock.Age(identity.BirthDate);
                 o.Sex=identity.Sex;
                 o.Partner=e.Get<FamilyComponent>(id).Partner;
                 o.Pregnant=e.Get<FamilyComponent>(id).PregnancyDueTick.HasValue;
+                o.Room=s.Map[pos.Tile].Room;
+                o.Sheltered=EnvironmentQueries.Sheltered(s,pos.Tile);
+                var targetDecision=e.Get<DecisionComponent>(id);
+                var targetInteraction=e.Try<InteractionComponent>(id);
+                var sleeping=targetDecision.Plan.FirstOrDefault()?.Action=="sleep"&&targetDecision.RemainingMinutes>0;
+                o.SocialAvailable=needs.Hunger<=.9f&&needs.Thirst<=.9f&&!sleeping&&
+                    !(targetInteraction is not null&&targetInteraction.Until>s.Clock.Tick);
                 var back=e.Get<RelationshipComponent>(id).People.GetValueOrDefault(actor);
                 o.TrustBack=back?.Trust??.3f;
                 o.AffectionBack=back?.Affection??.3f;
                 o.Skills=new(e.Get<SkillsComponent>(id).Experience);
-                o.Items=e.Get<InventoryComponent>(id).Items.GroupBy(i=>e.Get<ItemComponent>(i).Definition).ToDictionary(g=>g.Key, g=>g.Count());
+                o.Items=e.Get<InventoryComponent>(id).Items
+                    .Select(i=>e.Get<ItemComponent>(i))
+                    .Where(item=>session.Definitions.Items[item.Definition].Calories<=0||item.Freshness>=.1f)
+                    .GroupBy(item=>item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
+            }
+            else if(e.Try<FacilityComponent>(id) is { } facility)
+            {
+                var definition=session.Definitions.Facilities[facility.Definition];
+                o.Kind="facility";
+                o.Definition=facility.Definition;
+                o.Project=facility.Project;
+                o.Capabilities=definition.Capabilities.ToArray();
+                if(e.Has<StorageComponent>(id))
+                {
+                    var stored=e.Get<InventoryComponent>(id).Items.Select(i=>(Id:i,Item:e.Get<ItemComponent>(i))).ToArray();
+                    o.Spoiled=stored.Count(x=>session.Definitions.Items[x.Item.Definition].Calories>0&&x.Item.Freshness<.1f);
+                    o.Items=stored.Where(x=>
+                    {
+                        var itemDefinition=session.Definitions.Items[x.Item.Definition];
+                        if(itemDefinition.Calories>0&&x.Item.Freshness<.1f)return false;
+                        if(itemDefinition.Tools.Count>0&&x.Item.Durability<=0)return false;
+                        return true;
+                    }).GroupBy(x=>x.Item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
+                    o.Quantity=o.Items.Values.Sum();
+                }
+                else o.Quantity=1;
             }
             else if (e.Has<StorageComponent>(id))
             {
+                var storage=e.Get<StorageComponent>(id);
                 o.Kind="storage";
-                o.Items=e.Get<InventoryComponent>(id).Items.GroupBy(i=>e.Get<ItemComponent>(i).Definition).ToDictionary(g=>g.Key, g=>g.Count());
+                o.Project=storage.Project;
+                var stored=e.Get<InventoryComponent>(id).Items.Select(i=>(Id:i,Item:e.Get<ItemComponent>(i))).ToArray();
+                o.Spoiled=stored.Count(x=>session.Definitions.Items[x.Item.Definition].Calories>0&&x.Item.Freshness<.1f);
+                o.Items=stored.Where(x=>
+                {
+                    var definition=session.Definitions.Items[x.Item.Definition];
+                    if(definition.Calories>0&&x.Item.Freshness<.1f)return false;
+                    if(definition.Tools.Count>0&&x.Item.Durability<=0)return false;
+                    return true;
+                }).GroupBy(x=>x.Item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
                 o.Quantity=o.Items.Values.Sum();
             }
             else if (e.Try<FireComponent>(id) is { } fire)
@@ -135,21 +186,26 @@ public sealed class PerceptionSystem : ISimulationSystem
             else continue;
             Add(o);
         }
+        var waterSamples=new List<GridPoint>();
+        var roomsSeen=new HashSet<int>();
         for (var dy=-radius; dy<=radius; dy++)for (var dx=-radius; dx<=radius; dx++)
         {
-            var p=center+new GridPoint(dx, dy);
+            var p=center+new GridPoint(dx,dy);
             if (!s.Map.Contains(p))continue;
             var tile=s.Map[p];
             if(tile.Water is not (WaterKind.River or WaterKind.Lake)&&!(tile.Room>0&&tile.Roof>0))continue;
             if(!Visible(p))continue;
-            if (tile.Water is WaterKind.River or WaterKind.Lake)Add(new Observation
+            if(tile.Water is WaterKind.River or WaterKind.Lake)
             {
-                Kind="water", Position=p, Quantity=tile.Ice<.15f?1:0
-            });
-            if (tile.Room>0&&tile.Roof>0)Add(new Observation
-            {
-                Kind="shelter", Position=p, Quantity=1, Entity=tile.Room
-            });
+                var accessible=tile.Ice>=.15f||s.Map.Neighbors(p).Any(s.Map.Walkable);
+                if(accessible&&!waterSamples.Any(sample=>sample.Distance(p)<=3))
+                {
+                    waterSamples.Add(p);
+                    Add(new Observation { Kind="water",Position=p,Quantity=tile.Ice<.15f?1:0 });
+                }
+            }
+            if(tile.Room>0&&tile.Roof>0&&roomsSeen.Add(tile.Room))
+                Add(new Observation { Kind="shelter",Position=p,Quantity=1,Entity=tile.Room,Temperature=EnvironmentQueries.Local(s,p) });
         }
         memory.Visited.Add(center);
         if (memory.Visited.Count>128)memory.Visited.RemoveAt(0);

@@ -212,6 +212,7 @@ public partial class GameRoot : Node2D
                 case Key.Key4: Speed = 32; break;
                 case Key.F2: DebugView = !DebugView; break;
                 case Key.F3: CycleOverlay(); break;
+                case Key.H: Hud.ToggleInterface(); break;
                 case Key.F5: Save(); break;
                 case Key.F9: Load(); break;
                 case Key.F when key.CtrlPressed: Hud.FocusSearch(); break;

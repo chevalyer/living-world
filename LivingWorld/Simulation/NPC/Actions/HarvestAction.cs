@@ -33,7 +33,7 @@ public sealed class HarvestAction : SimAction
         if (s.Definitions.Items[d.Product].Calories>0&&!s.State.Entities.Get<KnowledgeComponent>(actor).EdiblePlants.Contains(d.Id))return false;
         var units=Math.Min(3, (int)plant.Yield);
         plant.Yield-=units;
-        for (var i=0; i<units; i++)s.Inventory.Spawn(d.Product, step.Position, actor);
+        for (var i=0; i<units; i++)s.Inventory.Spawn(d.Product, step.Position);
         s.Events.Publish(new SkillUsedEvent(actor, "foraging", units));
         return true;
     }

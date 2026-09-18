@@ -9,7 +9,8 @@ namespace LivingWorld.Presentation;
 public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility);
 public readonly record struct RenderEntity(int Id, GridPoint Tile, string Kind, string Color, string Accent,
     string Shape, float Growth, float Yield);
-public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action, int Appearance,
+public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action,
+    string HeldShape, string HeldColor, string HeldAccent, int Appearance,
     bool Child, bool Alive, bool Moving, bool Sleeping, bool Pregnant);
 public readonly record struct RenderMemory(GridPoint Tile, float Confidence);
 public sealed record RenderChunk(int Key, int X, int Y, long Revision,
@@ -17,8 +18,8 @@ public sealed record RenderChunk(int Key, int X, int Y, long Revision,
 public sealed record RenderSettlement(
     int Anchor, string Name, GridPoint Center,
     int MinX, int MinY, int MaxX, int MaxY,
-    int Homes, int Members, int Families, float FoodCalories, int Projects,
-    ReadOnlyCollection<string> Specializations);
+    int Homes, int Members, int Families, float FoodCalories, int Projects, int Facilities,
+    ReadOnlyCollection<string> Capabilities, ReadOnlyCollection<string> Specializations);
 public sealed record RenderRoom(int Id, ReadOnlyCollection<GridPoint> Tiles);
 public sealed record InspectorSnapshot(string Title, string Text);
 public sealed record ViewRequest(int Selected = 0, GridPoint? Tile = null, bool Debug = false);
@@ -72,7 +73,8 @@ public sealed class RenderSnapshotBuilder
             _homes = s.Entities.Store<ConstructionComponent>().All.Count(x => x.Value.Finished);
             _settlements = SettlementAnalyzer.DescribeAll(session).Select(x=>new RenderSettlement(
                 x.Anchor,x.Name,x.Center,x.MinX,x.MinY,x.MaxX,x.MaxY,x.Homes,x.Members,x.Families,
-                x.FoodCalories,x.Projects,Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
+                x.FoodCalories,x.Projects,x.Facilities,Array.AsReadOnly(x.Capabilities.ToArray()),
+                Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
             _worldText = DescribeWorld(session);
             _systemsText = DescribeSystems(session);
             _inspector = DescribeSelection(session, request);
@@ -91,8 +93,10 @@ public sealed class RenderSnapshotBuilder
             var e = s.Entities;
             var step=e.Get<DecisionComponent>(id).Plan.FirstOrDefault();
             var action=step is null?"наблюдает":session.Actions[step.Action].Label;
-            people.Add(new(id, e.Get<PositionComponent>(id).Tile, identity.FullName, action, identity.Appearance,
-                s.Clock.Age(identity.BirthDate) < 18, e.Get<HealthComponent>(id).Alive,
+            var held=HeldVisual(session,id,step);
+            people.Add(new(id,e.Get<PositionComponent>(id).Tile,identity.FullName,action,
+                held.Shape,held.Color,held.Accent,identity.Appearance,
+                s.Clock.Age(identity.BirthDate)<18,e.Get<HealthComponent>(id).Alive,
                 e.Get<MovementComponent>(id).Path.Count > 0,
                 step?.Action == "sleep",
                 e.Get<FamilyComponent>(id).PregnancyDueTick.HasValue));
@@ -113,6 +117,71 @@ public sealed class RenderSnapshotBuilder
             ticksPerSecond, Array.AsReadOnly((RenderChunk[])_chunks.Clone()), people.AsReadOnly(),
             Array.AsReadOnly((RenderSettlement[])_settlements.Clone()), Array.AsReadOnly(roomAreas),
             _inspector, _worldText, _systemsText, Array.AsReadOnly(path), Array.AsReadOnly(memories));
+    }
+
+    private static (string Shape,string Color,string Accent) HeldVisual(SimulationSession session,int actor,ActionStep? step)
+    {
+        if(step is null)return ("","","");
+        var e=session.State.Entities;
+        string definition="";
+        string tool=step.Action switch
+        {
+            "chop"=>"chop",
+            "mine" or "break_ice"=>"mine",
+            _=>""
+        };
+        if(tool.Length>0)
+        {
+            definition=e.Get<InventoryComponent>(actor).Items
+                .Where(id=>e.Get<ItemComponent>(id).Durability>0&&
+                    session.Definitions.Items[e.Get<ItemComponent>(id).Definition].Tools.ContainsKey(tool))
+                .OrderByDescending(id=>session.Definitions.Items[e.Get<ItemComponent>(id).Definition].Tools[tool])
+                .Select(id=>e.Get<ItemComponent>(id).Definition)
+                .FirstOrDefault()??"";
+        }
+        else if(step.Action=="build"&&e.Try<ConstructionComponent>(step.Target) is { } project)
+            definition=session.Definitions.Buildings[project.Definition].Resource;
+        else if(step.Action=="craft"&&session.Definitions.Recipes.TryGetValue(step.Argument,out var recipe))
+        {
+            if(recipe.Tool.Length>0)
+                definition=e.Get<InventoryComponent>(actor).Items
+                    .Where(id=>e.Get<ItemComponent>(id).Durability>0&&
+                        session.Definitions.Items[e.Get<ItemComponent>(id).Definition].Tools.ContainsKey(recipe.Tool))
+                    .Select(id=>e.Get<ItemComponent>(id).Definition).FirstOrDefault()??"";
+            if(definition.Length==0)definition=recipe.Inputs.Keys.FirstOrDefault()??"";
+        }
+        else if(step.Action=="trade")definition=step.Argument.Split('|',2)[0];
+        else if(step.Action=="sow"&&session.Definitions.Plants.TryGetValue(step.Argument,out var crop))
+            definition=crop.Product;
+        else if(step.Action=="build_facility"&&session.Definitions.Facilities.TryGetValue(step.Argument,out var facility))
+            definition=facility.Inputs.Keys.FirstOrDefault()??"";
+        else if(step.Action is "eat" or "give" or "care" or "deposit" or "refuel" or "light_fire" or "repair")
+            definition=session.Definitions.Items.ContainsKey(step.Argument)?step.Argument:"";
+
+        if(definition.Length==0||!session.Definitions.Items.TryGetValue(definition,out var item))return ("","","");
+        var shape=step.Action=="sow"?"seed":
+            tool=="chop"?"axe":tool=="mine"?"pick":
+            item.Tags.Contains("construction",StringComparer.Ordinal)||item.Tags.Contains("fuel",StringComparer.Ordinal)?"bulk":
+            item.Tags.Contains("food",StringComparer.Ordinal)?"food":
+            item.Tags.Contains("seed",StringComparer.Ordinal)?"seed":"item";
+        var color=item.Material switch
+        {
+            "wood"=>"#8d704d",
+            "stone"=>"#9b9c94",
+            "iron"=>"#a7aaa8",
+            "flax"=>"#c8b98b",
+            "wool"=>"#d8d1bd",
+            "organic"=>"#c8a660",
+            _=>"#d4c9ab"
+        };
+        var accent=shape switch
+        {
+            "axe" or "pick"=>item.Material=="iron"?"#d0d2cf":"#aaa9a0",
+            "food"=>"#d8b16b",
+            "seed"=>"#b89d61",
+            _=>"#b99c6a"
+        };
+        return (shape,color,accent);
     }
 
     private void RefreshChunks(SimulationSession session)
@@ -147,6 +216,11 @@ public sealed class RenderSnapshotBuilder
                 }
                 else if (e.Try<BuildingElementComponent>(id) is { } part)
                     entities.Add(new(id, position, part.Kind, part.Material == "stone" ? "#a5a59a" : "#a38b67", "", "", 1, 0));
+                else if(e.Try<FacilityComponent>(id) is { } facility)
+                {
+                    var definition=session.Definitions.Facilities[facility.Definition];
+                    entities.Add(new(id,position,"facility",definition.Color,definition.Accent,definition.Shape,1,0));
+                }
                 else if (e.Try<ConstructionComponent>(id) is { Finished: false } project)
                     foreach (var planned in project.Elements.Skip(project.Completed).Where(p => p.Kind == "wall"))
                         entities.Add(new(id, planned.Position, "blueprint", "#b6c4ad", "", "", 1, 0));
@@ -186,10 +260,37 @@ public sealed class RenderSnapshotBuilder
     {
         var s = session.State;
         if (s.Entities.Has<IdentityComponent>(request.Selected)) return DescribePerson(session, request.Selected);
-        if (request.Tile is { } p && s.Map.Contains(p))
+        if(request.Tile is { } p&&s.Map.Contains(p))
         {
-            var t = s.Map[p];
-            return new("местность", $"клетка {p.X}, {p.Y}\n\n{BiomeName(t.Biome)}\nвысота {t.Height:F3}\nвлажность {t.Moisture:P0}\nплодородие {t.Fertility:P0}\nвода {t.Water}\nлед {t.Ice*100:F1} см\nснег {t.Snow:P0}\nкомната {(t.Room==0?"нет":t.Room)}\nпроходимость {(s.Map.Walkable(p)?"да":"нет")}\nтропа {t.Traffic:F0}\nтемпература {EnvironmentQueries.Air(s,p):F1} °C");
+            var t=s.Map[p];
+            var text=new StringBuilder();
+            text.AppendLine($"клетка {p.X}, {p.Y}");
+            text.AppendLine($"\n{BiomeName(t.Biome)}");
+            text.AppendLine($"высота {t.Height:F3}");
+            text.AppendLine($"влажность {t.Moisture:P0}");
+            text.AppendLine($"плодородие {t.Fertility:P0}");
+            text.AppendLine($"вода {t.Water}");
+            text.AppendLine($"лед {t.Ice*100:F1} см");
+            text.AppendLine($"снег {t.Snow:P0}");
+            text.AppendLine($"комната {(t.Room==0?"нет":t.Room)}");
+            text.AppendLine($"проходимость {(s.Map.Walkable(p)?"да":"нет")}");
+            text.AppendLine($"тропа {t.Traffic:F0}");
+            text.AppendLine($"температура {EnvironmentQueries.Air(s,p):F1} °C");
+            foreach(var id in session.Spatial.Query(p,0).Where(id=>s.Entities.Get<PositionComponent>(id).Tile==p))
+            {
+                if(s.Entities.Try<FacilityComponent>(id) is not { } facility)continue;
+                var definition=session.Definitions.Facilities[facility.Definition];
+                Section(text,"объект");
+                text.AppendLine(Safe(definition.Name));
+                if(definition.Capabilities.Length>0)text.AppendLine("возможности: "+string.Join(", ",definition.Capabilities));
+                if(s.Entities.Try<InventoryComponent>(id) is { } inventory)
+                {
+                    text.AppendLine($"хранилище: {session.Inventory.Mass(id):F1}/{inventory.MaxMass:F0} кг");
+                    foreach(var group in inventory.Items.GroupBy(item=>s.Entities.Get<ItemComponent>(item).Definition))
+                        text.AppendLine($"{Safe(session.Definitions.Items[group.Key].Name)} × {group.Count()}");
+                }
+            }
+            return new("местность",text.ToString());
         }
         return new("выбери жителя", "Нажми на жителя или найди его по имени. Здесь появятся нужды, вещи, навыки, отношения и объяснение текущего решения.\n\nF2 покажет известные ему ресурсы и маршрут.");
     }
@@ -259,7 +360,7 @@ public sealed class RenderSnapshotBuilder
         foreach(var settlement in settlements)
             text.AppendLine($"{Safe(settlement.Name)} · {settlement.Members} жителей · {settlement.Homes} домов");
         Section(text,"природа");
-        text.AppendLine($"растений {s.Entities.Store<PlantComponent>().Count}\nпредметов {s.Entities.Store<ItemComponent>().Count}\nпроектов {s.Entities.Store<ConstructionComponent>().Count}");
+        text.AppendLine($"растений {s.Entities.Store<PlantComponent>().Count}\nпредметов {s.Entities.Store<ItemComponent>().Count}\nрабочих объектов {s.Entities.Store<FacilityComponent>().Count}\nпроектов {s.Entities.Store<ConstructionComponent>().Count}");
         Section(text,"погода");
         text.AppendLine($"световой день {s.Weather.DaylightHours:F1} ч\nветер {s.Weather.Wind:P0}\nосадки {s.Weather.Rain:P0}");
         Section(text,"история");
@@ -280,7 +381,7 @@ public sealed class RenderSnapshotBuilder
         text.AppendLine($"активных планов {activePlans} · средняя длина {averagePlan:F1}");
         text.AppendLine($"ошибок планов {failures} · резервов {session.Reservations.Entries.Count}");
         text.AppendLine($"жителей {s.Population} · предметов {e.Store<ItemComponent>().Count} · растений {e.Store<PlantComponent>().Count}");
-        text.AppendLine($"строек {e.Store<ConstructionComponent>().All.Count(x=>!x.Value.Finished)} · огней {e.Store<FireComponent>().Count}");
+        text.AppendLine($"строек {e.Store<ConstructionComponent>().All.Count(x=>!x.Value.Finished)} · facilities {e.Store<FacilityComponent>().Count} · огней {e.Store<FireComponent>().Count}");
         foreach(var p in session.Profiles.Values.OrderByDescending(x=>x.AverageMilliseconds))
         {
             Section(text,p.Name);

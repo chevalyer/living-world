@@ -215,6 +215,7 @@ public partial class SimulationHud : CanvasLayer
         AddOverlay(row,"тропы",MapOverlay.Traffic);
         AddOverlay(row,"почва",MapOverlay.Fertility);
         AddOverlay(row,"комнаты",MapOverlay.Rooms);
+        AddOverlay(row,"объекты",MapOverlay.Facilities);
 
         row.AddChild(Spacer(8));
         var hint=Label("F3",11);
@@ -238,7 +239,7 @@ public partial class SimulationHud : CanvasLayer
         _status.AutowrapMode=TextServer.AutowrapMode.WordSmart;
         box.AddChild(_status);
 
-        var keys=Label("Ctrl+F поиск  ·  F карта  ·  F2 маршрут  ·  F3 слой",10);
+        var keys=Label("Ctrl+F поиск  ·  F карта  ·  F2 маршрут  ·  F3 слой  ·  H интерфейс",10);
         keys.Modulate=new Color("#71817d");
         box.AddChild(keys);
     }
@@ -296,7 +297,14 @@ public partial class SimulationHud : CanvasLayer
         button.AddThemeColorOverride("font_color",new Color("#fff2d1"));
     }
 
+    public bool InterfaceVisible=>_root.Visible;
+    public void ToggleInterface()
+    {
+        _root.Visible=!_root.Visible;
+        Game.View.QueueRedraw();
+    }
     public void Status(string message)=>_status.Text=message;
+
 
     public void WorldChanged()
     {
@@ -466,8 +474,10 @@ public partial class SimulationHud : CanvasLayer
                 Status("сид должен быть целым числом");
                 return;
             }
+            var people=WorldCreationInput.Population(_people.GetLineEdit().Text,(int)_people.Value);
+            _people.Value=people;
             _modal.Hide();
-            _=Game.NewWorld(seed,_mapSize.GetSelectedId(),(int)_people.Value);
+            _=Game.NewWorld(seed,_mapSize.GetSelectedId(),people);
         });
         Accent(create);
         buttons.AddChild(create);
@@ -540,6 +550,9 @@ public partial class SimulationHud : CanvasLayer
         Section(text,"застройка");
         text.AppendLine($"домов  {settlement.Homes}");
         text.AppendLine($"строится  {settlement.Projects}");
+        text.AppendLine($"мебели и рабочих объектов  {settlement.Facilities}");
+        if(settlement.Capabilities.Count>0)
+            text.AppendLine($"возможности  {string.Join(", ",settlement.Capabilities)}");
         Section(text,"запасы");
         text.AppendLine($"доступная еда  {settlement.FoodCalories:F0} ккал");
         if(settlement.Members>0)text.AppendLine($"на жителя  {settlement.FoodCalories/settlement.Members:F0} ккал");
