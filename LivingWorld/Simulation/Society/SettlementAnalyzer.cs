@@ -39,8 +39,8 @@ public static class SettlementAnalyzer
             var homeIds=cluster.Select(x=>x.Id).ToHashSet();
             var anchor=cluster.Min(x=>x.Id);
             var center=new GridPoint(
-                (int)MathF.Round(cluster.Average(x=>x.Position.X)),
-                (int)MathF.Round(cluster.Average(x=>x.Position.Y)));
+                (int)Math.Round(cluster.Average(x=>x.Position.X)),
+                (int)Math.Round(cluster.Average(x=>x.Position.Y)));
 
             var minX=cluster.Min(x=>x.Position.X-session.Definitions.Buildings[x.Definition].Size/2)-BorderPadding;
             var minY=cluster.Min(x=>x.Position.Y-session.Definitions.Buildings[x.Definition].Size/2)-BorderPadding;
