@@ -13,6 +13,8 @@ public sealed record Observation
     public float Confidence { get; set; } = 1;
     public long UnreachableUntil { get; set; }
     public int Owner { get; set; }
+    public int Project { get; set; }
+    public string[] Capabilities { get; set; } = [];
     public float Need { get; set; }
     public float Thirst { get; set; }
     public float Fatigue { get; set; }

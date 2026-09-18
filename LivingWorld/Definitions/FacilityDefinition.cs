@@ -12,6 +12,7 @@ public sealed record FacilityDefinition
     public float StorageMass { get; init; }
     public float StorageVolume { get; init; }
     public float RestMultiplier { get; init; } = 1;
+    public float MinMoisture { get; init; }
     public string Shape { get; init; } = "workbench";
     public string Color { get; init; } = "#8a7354";
     public string Accent { get; init; } = "#c0a16e";

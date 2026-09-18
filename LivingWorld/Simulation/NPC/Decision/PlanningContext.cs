@@ -26,11 +26,19 @@ public sealed class PlanningContext
     public int MapWidth { get; init; }
     public GridPoint? BuildSite { get; init; }
     public GridPoint? SowSite { get; init; }
+    public Dictionary<string,GridPoint> FacilitySites { get; init; } = new(StringComparer.Ordinal);
     public bool SocialReady { get; init; }
     public float MaxMass { get; init; } = 28;
     public float MaxVolume { get; init; } = 40;
     public static string ItemFact(string item)=>"item:"+item;
     public IEnumerable<Observation> OfKind(string kind)=>Known.Where(o=>o.Kind==kind&&o.UnreachableUntil<=Tick).OrderBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
+    public IEnumerable<Observation> Facilities(string capability)=>Known.Where(o=>o.Kind=="facility"&&o.UnreachableUntil<=Tick&&
+        o.Capabilities.Contains(capability,StringComparer.Ordinal)&&(o.Project==0||o.Project==Family.HomeProject))
+        .OrderBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
+    public IEnumerable<Observation> Storages()=>Known.Where(o=>o.UnreachableUntil<=Tick&&
+        (o.Kind=="storage"||o.Kind=="facility"&&o.Capabilities.Contains("storage",StringComparer.Ordinal))&&
+        (o.Project==0||o.Project==Family.HomeProject))
+        .OrderByDescending(o=>o.Kind=="facility").ThenBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
     public PlanningState InitialState()
     {
         var state=new PlanningState
@@ -51,7 +59,12 @@ public sealed class PlanningContext
         }
         state.Facts["food.reserve"]=reserve;
         foreach (var o in Known.Where(o=>o.Quantity>0))state.Facts["source:"+o.Entity]=o.Quantity;
-        foreach (var storage in Known.Where(o=>o.Kind=="storage"))foreach (var item in storage.Items)state.Facts["stock:"+storage.Entity+":"+item.Key]=item.Value;
+        foreach (var storage in Storages())foreach (var item in storage.Items)state.Facts["stock:"+storage.Entity+":"+item.Key]=item.Value;
+        foreach(var facility in Known.Where(o=>o.Kind=="facility"))
+        {
+            state.Facts["facility:"+facility.Definition]=1;
+            foreach(var capability in facility.Capabilities)state.Facts["capability:"+capability]=1;
+        }
         if (Known.Any(o=>o.Kind=="fire"&&o.Quantity>0&&o.Position.Distance(Position)<=2))state.Facts["heat"]=1;
         if (BuildSite.HasValue)state.Facts["site"]=1;
         if (Sheltered)state.Facts["indoors"]=1;

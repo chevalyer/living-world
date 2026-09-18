@@ -133,9 +133,33 @@ public sealed class PerceptionSystem : ISimulationSystem
                     .Where(item=>session.Definitions.Items[item.Definition].Calories<=0||item.Freshness>=.1f)
                     .GroupBy(item=>item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
             }
+            else if(e.Try<FacilityComponent>(id) is { } facility)
+            {
+                var definition=session.Definitions.Facilities[facility.Definition];
+                o.Kind="facility";
+                o.Definition=facility.Definition;
+                o.Project=facility.Project;
+                o.Capabilities=definition.Capabilities.ToArray();
+                if(e.Has<StorageComponent>(id))
+                {
+                    var stored=e.Get<InventoryComponent>(id).Items.Select(i=>(Id:i,Item:e.Get<ItemComponent>(i))).ToArray();
+                    o.Spoiled=stored.Count(x=>session.Definitions.Items[x.Item.Definition].Calories>0&&x.Item.Freshness<.1f);
+                    o.Items=stored.Where(x=>
+                    {
+                        var itemDefinition=session.Definitions.Items[x.Item.Definition];
+                        if(itemDefinition.Calories>0&&x.Item.Freshness<.1f)return false;
+                        if(itemDefinition.Tools.Count>0&&x.Item.Durability<=0)return false;
+                        return true;
+                    }).GroupBy(x=>x.Item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
+                    o.Quantity=o.Items.Values.Sum();
+                }
+                else o.Quantity=1;
+            }
             else if (e.Has<StorageComponent>(id))
             {
+                var storage=e.Get<StorageComponent>(id);
                 o.Kind="storage";
+                o.Project=storage.Project;
                 var stored=e.Get<InventoryComponent>(id).Items.Select(i=>(Id:i,Item:e.Get<ItemComponent>(i))).ToArray();
                 o.Spoiled=stored.Count(x=>session.Definitions.Items[x.Item.Definition].Calories>0&&x.Item.Freshness<.1f);
                 o.Items=stored.Where(x=>
