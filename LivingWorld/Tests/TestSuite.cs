@@ -273,6 +273,44 @@ public static class TestSuite
             Assert(water.All(o=>s.State.Map[o.Position].Ice>=.15f||s.State.Map.Neighbors(o.Position).Any(s.State.Map.Walkable)),"unreachable interior water remembered");
             Assert(water.Length<10,"water cells still flood memory");
         });
+        Test("thirsty child produces a targeted care plan", ()=>
+        {
+            var(s,parent)=Fixture();
+            var child=new NpcFactory(D).Spawn(s.State,new(6,5),"female",s.State.Clock.Now);
+            s.Spatial.Add(child,new(6,5));
+            s.State.Entities.Get<FamilyComponent>(parent).Children.Add(child);
+            s.State.Entities.Get<FamilyComponent>(child).Mother=parent;
+            s.State.Entities.Get<NeedsComponent>(child).Thirst=.82f;
+            Give(s,parent,"raspberry");
+            PerceptionSystem.Observe(s,parent,s.State.Entities.Get<MemoryComponent>(parent));
+            var context=ContextBuilder.Create(s,parent);
+            var desire=new SocialEvaluator().Evaluate(context).First(x=>x.Fact==$"cared:{child}");
+            var plan=s.Planner.Find(context,s.Actions.All.Where(a=>!a.RequiresWork||context.CanWork).SelectMany(a=>a.Options(context)).ToList(),desire);
+            Assert(plan is not null&&plan.Steps.Any(x=>x.Action=="care"&&x.Target==child),"parent cannot plan care for thirsty child");
+        });
+        Test("planner uses an ice hole for frozen freshwater", ()=>
+        {
+            var(s,id)=Fixture();
+            var water=new GridPoint(6,5);
+            s.State.Map[water].Water=WaterKind.River;
+            s.State.Map[water].Ice=.2f;
+            Give(s,id,"stone_pick");
+            var memory=s.State.Entities.Get<MemoryComponent>(id);
+            memory.Observations.Add(new(){Kind="water",Position=water,Quantity=0,SeenTick=s.State.Clock.Tick});
+            var context=ContextBuilder.Create(s,id);
+            var plan=s.Planner.Find(context,s.Actions.All.Where(a=>!a.RequiresWork||context.CanWork).SelectMany(a=>a.Options(context)).ToList(),new("hydrated","test",10));
+            Assert(plan is not null&&plan.Steps.Any(x=>x.Action=="break_ice"),"frozen water did not produce break ice plan");
+        });
+        Test("fatal overheating records overheating", ()=>
+        {
+            var(s,id)=Fixture();
+            var health=s.State.Entities.Get<HealthComponent>(id);
+            health.Value=.01f;
+            s.State.Entities.Get<ThermalComponent>(id).Temperature=41;
+            new TemperatureSystem().Update(s);
+            new LifeSystem().Update(s);
+            Equal("перегрев",health.DeathReason);
+        });
         Test("critical unknown thirst triggers emergency exploration", ()=>
         {
             var(s,id)=Fixture();
