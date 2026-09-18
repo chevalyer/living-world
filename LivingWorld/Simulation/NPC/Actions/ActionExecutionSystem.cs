@@ -39,9 +39,9 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                         movement.Path.Clear();
                         movement.Destination=null;
                     }
-                    if(intended.Exclusive&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
+                    if((intended.Exclusive||intended.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
                     {
-                        session.Replan(actor,"ресурс уже занят");
+                        session.Replan(actor,intended.EngagesTarget?"собеседник уже занят":"ресурс уже занят");
                         continue;
                     }
                 }
@@ -65,6 +65,11 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                     movement.Destination=step.Position;
                     movement.NavigationRevision=s.Map.NavigationRevision;
                 }
+                continue;
+            }
+            if(action.EngagesTarget&&session.Reservations.Entries.TryGetValue(actor,out var incoming)&&incoming.Actor!=actor&&incoming.Expires>s.Clock.Tick)
+            {
+                session.Replan(actor,"ожидает собеседника");
                 continue;
             }
             if(step.Action=="build"&&e.Try<ConstructionComponent>(step.Target) is { } projectState)
@@ -101,7 +106,7 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                 session.FailPlan(actor, "цель вне досягаемости");
                 continue;
             }
-            if (action.Exclusive&&!session.Reservations.Claim(step.Target, actor, s.Clock.Tick))
+            if ((action.Exclusive||action.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
             {
                 var other=session.Reservations.Entries.GetValueOrDefault(step.Target)?.Actor??0;
                 if (other!=0&&s.Clock.Tick-decision.LastFailureTick>120)session.Events.Publish(new SocialEvent(actor, other, "resource_conflict", .03f));

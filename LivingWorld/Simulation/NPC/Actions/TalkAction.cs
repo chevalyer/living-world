@@ -7,7 +7,7 @@ public sealed class TalkAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if(!c.SocialReady)yield break;
-        foreach(var o in c.OfKind("npc").Where(o=>o.Age>=3))
+        foreach(var o in c.OfKind("npc").Where(o=>o.Age>=3&&o.Need<=.9f&&o.Thirst<=.9f))
         {
             var op=Option(o.Position,o.Entity,duration:15);
             op.Effects=[new("socialized",1,true)];

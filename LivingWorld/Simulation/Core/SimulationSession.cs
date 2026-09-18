@@ -128,7 +128,8 @@ public sealed class SimulationSession
                     memory.UnreachableUntil=State.Clock.Tick+360;
             }
             Events.Publish(new ActionFailedEvent(actor,step.Action,reason));
-            FailureActions[step.Action]=FailureActions.GetValueOrDefault(step.Action)+1;
+            var failureAction=step.Action=="move"&&step.Argument.Length>0?"move:"+step.Argument:step.Action;
+            FailureActions[failureAction]=FailureActions.GetValueOrDefault(failureAction)+1;
         }
         FailureReasons[reason]=FailureReasons.GetValueOrDefault(reason)+1;
         CancelPlan(actor);
