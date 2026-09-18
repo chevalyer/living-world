@@ -25,6 +25,26 @@ public sealed class ActionExecutionSystem : ISimulationSystem
             {
                 var movement=e.Get<MovementComponent>(actor);
                 var p=e.Get<PositionComponent>(actor).Tile;
+                if(step.Target!=0&&session.Actions.Has(step.Argument))
+                {
+                    var intended=session.Actions[step.Argument];
+                    GridPoint? dynamicTarget=null;
+                    if(step.Argument=="build"&&e.Try<ConstructionComponent>(step.Target) is { Finished:false } project)
+                        dynamicTarget=project.Elements[project.Completed].Position;
+                    else if(intended.EngagesTarget&&e.Try<PositionComponent>(step.Target) is { } targetPosition)
+                        dynamicTarget=targetPosition.Tile;
+                    if(dynamicTarget.HasValue&&dynamicTarget.Value!=step.Position)
+                    {
+                        step.Position=dynamicTarget.Value;
+                        movement.Path.Clear();
+                        movement.Destination=null;
+                    }
+                    if(intended.Exclusive&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
+                    {
+                        session.Replan(actor,"ресурс уже занят");
+                        continue;
+                    }
+                }
                 // A moving NPC may have left its observed location. We learn that only on arrival.
                 if (p.Distance(step.Position)<=step.Range)
                 {
@@ -47,6 +67,30 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                 }
                 continue;
             }
+            if(step.Action=="build"&&e.Try<ConstructionComponent>(step.Target) is { } projectState)
+            {
+                if(projectState.Finished)
+                {
+                    session.Replan(actor,"стройка уже завершена");
+                    continue;
+                }
+                var work=projectState.Elements[projectState.Completed].Position;
+                step.Position=work;
+                if(e.Get<PositionComponent>(actor).Tile.Distance(work)>step.Range)
+                {
+                    decision.Plan.Insert(0,new ActionStep { Action="move",Position=work,Range=step.Range,Target=step.Target,Argument="build",Duration=1 });
+                    continue;
+                }
+            }
+            else if(action.EngagesTarget&&step.Target!=0&&e.Try<PositionComponent>(step.Target) is { } liveTarget)
+            {
+                step.Position=liveTarget.Tile;
+                if(e.Get<PositionComponent>(actor).Tile.Distance(step.Position)>step.Range)
+                {
+                    decision.Plan.Insert(0,new ActionStep { Action="move",Position=step.Position,Range=step.Range,Target=step.Target,Argument=step.Action,Duration=1 });
+                    continue;
+                }
+            }
             if (!action.CanExecute(session, actor, step, out var reason))
             {
                 session.FailPlan(actor, reason);
@@ -66,7 +110,7 @@ public sealed class ActionExecutionSystem : ISimulationSystem
             }
             if (decision.RemainingMinutes<0)
             {
-                if (action.EngagesTarget&&!session.Interactions.Begin(actor, step.Target, step.Duration))
+                if (action.EngagesTarget&&!session.Interactions.Begin(actor,step.Target,step.Duration,step.Action))
                 {
                     session.FailPlan(actor, "собеседник занят или отказался");
                     continue;
@@ -85,12 +129,11 @@ public sealed class ActionExecutionSystem : ISimulationSystem
     {
         session.Interactions.End(actor);
         var decision=session.State.Entities.Get<DecisionComponent>(actor);
-        session.Events.Publish(new ActionCompletedEvent(actor, decision.Plan[0] with
-        {
-        }));
+        var completed=decision.Plan[0];
+        session.Events.Publish(new ActionCompletedEvent(actor,completed with { }));
         decision.Plan.RemoveAt(0);
         decision.RemainingMinutes=-1;
-        session.Reservations.Release(actor);
+        if(completed.Action!="move")session.Reservations.Release(actor);
         if (decision.Plan.Count==0)decision.NextDecision=session.State.Clock.Tick;
     }
 }

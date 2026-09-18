@@ -43,7 +43,17 @@ public sealed class FamilySystem : ISimulationSystem
                 r.Affection=.9f;
                 r.Trust=.9f;
             }
-            session.Spatial.Add(child, p);
+            session.Spatial.Add(child,p);
+            foreach(var parent in new[]{mother,father}.Where(id=>e.Exists(id)&&e.Has<MemoryComponent>(id)))
+            {
+                var needs=e.Get<NeedsComponent>(child);
+                e.Get<MemoryComponent>(parent).Observations.Add(new Observation
+                {
+                    Kind="npc",Entity=child,Position=p,Need=needs.Hunger,Thirst=needs.Thirst,Fatigue=needs.Fatigue,
+                    Health=e.Get<HealthComponent>(child).Value,Age=0,Sex=e.Get<IdentityComponent>(child).Sex,
+                    Partner=0,Pregnant=false,Room=s.Map[p].Room,Sheltered=EnvironmentQueries.Sheltered(s,p),SeenTick=s.Clock.Tick
+                });
+            }
             s.Log($"Родился ребенок: {e.Get<IdentityComponent>(child).FullName}.");
             session.Events.Publish(new ChildBornEvent(child, mother, father));
             count++;
