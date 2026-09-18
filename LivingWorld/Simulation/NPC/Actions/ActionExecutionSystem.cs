@@ -98,8 +98,7 @@ public sealed class ActionExecutionSystem : ISimulationSystem
             }
             if(!action.CanExecute(session,actor,step,out var reason))
             {
-                if(action.EngagesTarget||reason is "предмет уже забрали" or "место больше не подходит")
-                    session.Replan(actor,reason,12);
+                if(Transient(action,reason))session.Replan(actor,reason,12);
                 else session.FailPlan(actor,reason);
                 continue;
             }
@@ -128,11 +127,20 @@ public sealed class ActionExecutionSystem : ISimulationSystem
             decision.RemainingMinutes-=1;
             if (decision.RemainingMinutes>0)continue;
             // Validate again immediately before committing effects: no delayed duplicate harvests or trades.
-            if (action.CanExecute(session, actor, step, out reason)&&action.Execute(session, actor, step))Complete(session, actor);
-            else session.FailPlan(actor, string.IsNullOrEmpty(reason)?"обстановка изменилась":reason);
+            if(action.CanExecute(session,actor,step,out reason)&&action.Execute(session,actor,step))Complete(session,actor);
+            else
+            {
+                var changed=string.IsNullOrEmpty(reason)?"обстановка изменилась":reason;
+                if(Transient(action,changed))session.Replan(actor,changed,12);
+                else session.FailPlan(actor,changed);
+            }
         }
         return count;
     }
+
+    private static bool Transient(ISimAction action,string reason)=>
+        action.EngagesTarget||reason is "предмет уже забрали" or "место больше не подходит" or
+        "источник тепла изменился" or "ресурс уже занят" or "стройка уже завершена";
     private static void Complete(SimulationSession session, int actor)
     {
         session.Interactions.End(actor);

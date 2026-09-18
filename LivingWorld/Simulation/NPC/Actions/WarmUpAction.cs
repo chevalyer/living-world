@@ -20,8 +20,9 @@ public sealed class WarmUpAction : SimAction
             yield return op;
         }
     }
-    public override bool Execute(SimulationSession s,int actor,ActionStep step)
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
     {
+        reason="источник тепла изменился";
         var p=s.State.Entities.Get<PositionComponent>(actor).Tile;
         if(EnvironmentQueries.FireHeat(s,p)>1)return true;
         if(!EnvironmentQueries.Sheltered(s.State,p))return false;
@@ -29,4 +30,5 @@ public sealed class WarmUpAction : SimAction
         var outdoor=EnvironmentQueries.Air(s.State,p);
         return local>=10||local>outdoor+.5f;
     }
+    public override bool Execute(SimulationSession s,int actor,ActionStep step)=>CanExecute(s,actor,step,out _);
 }

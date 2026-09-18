@@ -17,16 +17,23 @@ public sealed class SowAction : SimAction
             yield return op;
         }
     }
-    public override bool Execute(SimulationSession s,int actor,ActionStep step)
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
     {
-        if(!ActionRules.CanWork(s.State,actor)||!s.State.Map.Contains(step.Position))return false;
-        var actorPosition=s.State.Entities.Get<PositionComponent>(actor).Tile;
-        if(actorPosition.Distance(step.Position)>1)return false;
+        reason="место больше не подходит";
+        if(!base.CanExecute(s,actor,step,out _ )||!s.State.Map.Contains(step.Position))return false;
         var p=step.Position;
         var d=s.Definitions.Plants[step.Argument];
         var tile=s.State.Map[p];
-        if(!s.State.Map.Walkable(p)||tile.Roof>0||tile.Floor>0||tile.Water!=WaterKind.None||EnvironmentQueries.Air(s.State,p)<d.MinTemperature)return false;
-        if(s.Spatial.Query(p,0).Any(id=>s.State.Entities.Has<PlantComponent>(id)&&s.State.Entities.Get<PositionComponent>(id).Tile==p))return false;
+        if(s.State.Entities.Get<PositionComponent>(actor).Tile.Distance(p)>1||
+           !s.State.Map.Walkable(p)||tile.Roof>0||tile.Floor>0||tile.Water!=WaterKind.None||
+           EnvironmentQueries.Air(s.State,p)<d.MinTemperature)return false;
+        return !s.Spatial.Query(p,0).Any(id=>s.State.Entities.Has<PlantComponent>(id)&&s.State.Entities.Get<PositionComponent>(id).Tile==p);
+    }
+    public override bool Execute(SimulationSession s,int actor,ActionStep step)
+    {
+        if(!CanExecute(s,actor,step,out _))return false;
+        var p=step.Position;
+        var d=s.Definitions.Plants[step.Argument];
         if(!s.Inventory.Consume(actor,d.Product,1))return false;
         var id=s.State.Entities.Create();
         s.State.Entities.Set(id,new PositionComponent { Tile=p });

@@ -34,7 +34,7 @@ public static class ContextBuilder
             Room=s.Map[p].Room,
             MapWidth=s.Map.Width,
             BuildSite=findBuildSite?BuildingService.FindVisibleSite(session, actor):null,
-            SowSite=FindSowSite(session, actor),
+            SowSite=findBuildSite?FindSowSite(session,actor):null,
             SocialReady=s.Clock.Tick-decision.LastSocialTick>120
         };
     }

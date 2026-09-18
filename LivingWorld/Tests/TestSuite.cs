@@ -391,6 +391,24 @@ public static class TestSuite
             Equal(expected,settlement.Name);
             Assert(settlement.Name.ToLowerInvariant().All(ch=>(D.Names.Vowels+D.Names.Consonants).Contains(ch)),"settlement name uses preset fragments");
         });
+        Test("chop and mine consume planned tool uses", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"stone_axe"); Give(s,id,"stone_pick");
+            var tree=Plant(s,new(6,5),"oak",6);
+            var resource=s.State.Entities.Create();
+            s.State.Entities.Set(resource,new PositionComponent { Tile=new(6,6) });
+            s.State.Entities.Set(resource,new ResourceComponent { Product="granite",Units=6 });
+            s.Spatial.Add(resource,new(6,6));
+            var memory=s.State.Entities.Get<MemoryComponent>(id);
+            memory.Observations.Add(new(){Kind="plant",Entity=tree,Definition="oak",Product="log",Position=new(6,5),Quantity=6});
+            memory.Observations.Add(new(){Kind="resource",Entity=resource,Product="granite",Position=new(6,6),Quantity=6});
+            var context=ContextBuilder.Create(s,id);
+            var chop=new ChopAction().Options(context).Single();
+            var mine=new MineAction().Options(context).Single();
+            Equal(-1,chop.Effects.Single(x=>x.Fact=="tool:chop").Amount);
+            Equal(-1,mine.Effects.Single(x=>x.Fact=="tool:mine").Amount);
+        });
         Test("planner tracks remaining tool uses", ()=>
         {
             var(s,id)=Fixture();
