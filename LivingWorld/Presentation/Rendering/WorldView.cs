@@ -299,6 +299,7 @@ public partial class WorldView : Node2D
         var step = person.Moving ? (int)(tick % 2) : 0;
         DrawRect(new Rect2(p + new Vector2(-3, 2 + step) * scale, new Vector2(2, 4) * scale), new Color("#4c5048"));
         DrawRect(new Rect2(p + new Vector2(1, 3 - step) * scale, new Vector2(2, 3) * scale), new Color("#4c5048"));
+        if(person.HeldShape.Length>0)DrawHeld(person,p,scale);
         if (person.Sleeping) Pixel(p, 5, -13, 2, 2, "#d9e4e8");
         if (person.Pregnant) Pixel(p, 6, -5, 2, 2, "#e8c9b7");
         if (Game.DebugView && selected)
@@ -307,6 +308,35 @@ public partial class WorldView : Node2D
             DrawString(ThemeDB.FallbackFont,p+new Vector2(8,-12),person.Action,HorizontalAlignment.Left,-1,fontSize,new Color(.94f,.91f,.82f,.9f));
         }
     }
+    private void DrawHeld(RenderPerson person,Vector2 p,float scale)
+    {
+        var hand=p+new Vector2(4,-3)*scale;
+        switch(person.HeldShape)
+        {
+            case "axe":
+                DrawLine(hand,hand+new Vector2(4,7)*scale,new Color("#806348"),1.5f);
+                DrawRect(new Rect2(hand+new Vector2(2,-1)*scale,new Vector2(5,3)*scale),new Color(person.HeldAccent));
+                break;
+            case "pick":
+                DrawLine(hand,hand+new Vector2(3,8)*scale,new Color("#806348"),1.5f);
+                DrawLine(hand+new Vector2(-2,0)*scale,hand+new Vector2(5,-1)*scale,new Color(person.HeldAccent),2);
+                break;
+            case "bulk":
+                DrawRect(new Rect2(hand+new Vector2(0,2)*scale,new Vector2(7,3)*scale),new Color(person.HeldColor));
+                DrawRect(new Rect2(hand+new Vector2(1,2)*scale,new Vector2(2,3)*scale),new Color(person.HeldAccent));
+                break;
+            case "food":
+                DrawCircle(hand+new Vector2(3,2)*scale,2.5f*scale,new Color(person.HeldColor));
+                break;
+            case "seed":
+                DrawRect(new Rect2(hand+new Vector2(2,1)*scale,new Vector2(3,3)*scale),new Color(person.HeldColor));
+                break;
+            default:
+                DrawRect(new Rect2(hand+new Vector2(1,1)*scale,new Vector2(4,4)*scale),new Color(person.HeldColor));
+                break;
+        }
+    }
+
     private void DrawDebug(RenderSnapshot snapshot, Rect2 visible)
     {
         var selected = snapshot.People.FirstOrDefault(p => p.Id == Game.Selected);

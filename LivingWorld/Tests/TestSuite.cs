@@ -242,6 +242,16 @@ public static class TestSuite
             Equal(2,settlements.Count);
             Equal(3,settlements.Sum(x=>x.Members));
         });
+        Test("render snapshot exposes the item used in NPC hands", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"stone_axe");
+            s.State.Entities.Get<DecisionComponent>(id).Plan=[new(){Action="chop",Position=new(6,5)}];
+            var snapshot=new LivingWorld.Presentation.RenderSnapshotBuilder().Capture(s,1,true,1,0,new(),force:true);
+            var person=snapshot.People.Single(x=>x.Id==id);
+            Equal("axe",person.HeldShape);
+            Assert(person.HeldColor.Length>0,"held item has no render color");
+        });
         Test("render snapshot exposes immutable settlement data", ()=>
         {
             var(s, first)=Fixture();

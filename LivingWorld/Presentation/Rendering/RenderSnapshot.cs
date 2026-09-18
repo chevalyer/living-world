@@ -9,7 +9,8 @@ namespace LivingWorld.Presentation;
 public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility);
 public readonly record struct RenderEntity(int Id, GridPoint Tile, string Kind, string Color, string Accent,
     string Shape, float Growth, float Yield);
-public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action, int Appearance,
+public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action,
+    string HeldShape, string HeldColor, string HeldAccent, int Appearance,
     bool Child, bool Alive, bool Moving, bool Sleeping, bool Pregnant);
 public readonly record struct RenderMemory(GridPoint Tile, float Confidence);
 public sealed record RenderChunk(int Key, int X, int Y, long Revision,
@@ -91,8 +92,10 @@ public sealed class RenderSnapshotBuilder
             var e = s.Entities;
             var step=e.Get<DecisionComponent>(id).Plan.FirstOrDefault();
             var action=step is null?"наблюдает":session.Actions[step.Action].Label;
-            people.Add(new(id, e.Get<PositionComponent>(id).Tile, identity.FullName, action, identity.Appearance,
-                s.Clock.Age(identity.BirthDate) < 18, e.Get<HealthComponent>(id).Alive,
+            var held=HeldVisual(session,id,step);
+            people.Add(new(id,e.Get<PositionComponent>(id).Tile,identity.FullName,action,
+                held.Shape,held.Color,held.Accent,identity.Appearance,
+                s.Clock.Age(identity.BirthDate)<18,e.Get<HealthComponent>(id).Alive,
                 e.Get<MovementComponent>(id).Path.Count > 0,
                 step?.Action == "sleep",
                 e.Get<FamilyComponent>(id).PregnancyDueTick.HasValue));
@@ -113,6 +116,66 @@ public sealed class RenderSnapshotBuilder
             ticksPerSecond, Array.AsReadOnly((RenderChunk[])_chunks.Clone()), people.AsReadOnly(),
             Array.AsReadOnly((RenderSettlement[])_settlements.Clone()), Array.AsReadOnly(roomAreas),
             _inspector, _worldText, _systemsText, Array.AsReadOnly(path), Array.AsReadOnly(memories));
+    }
+
+    private static (string Shape,string Color,string Accent) HeldVisual(SimulationSession session,int actor,ActionStep? step)
+    {
+        if(step is null)return ("","","");
+        var e=session.State.Entities;
+        string definition="";
+        string tool=step.Action switch
+        {
+            "chop"=>"chop",
+            "mine" or "break_ice"=>"mine",
+            _=>""
+        };
+        if(tool.Length>0)
+        {
+            definition=e.Get<InventoryComponent>(actor).Items
+                .Where(id=>e.Get<ItemComponent>(id).Durability>0&&
+                    session.Definitions.Items[e.Get<ItemComponent>(id).Definition].Tools.ContainsKey(tool))
+                .OrderByDescending(id=>session.Definitions.Items[e.Get<ItemComponent>(id).Definition].Tools[tool])
+                .Select(id=>e.Get<ItemComponent>(id).Definition)
+                .FirstOrDefault()??"";
+        }
+        else if(step.Action=="build"&&e.Try<ConstructionComponent>(step.Target) is { } project)
+            definition=session.Definitions.Buildings[project.Definition].Resource;
+        else if(step.Action=="craft"&&session.Definitions.Recipes.TryGetValue(step.Argument,out var recipe))
+        {
+            if(recipe.Tool.Length>0)
+                definition=e.Get<InventoryComponent>(actor).Items
+                    .Where(id=>e.Get<ItemComponent>(id).Durability>0&&
+                        session.Definitions.Items[e.Get<ItemComponent>(id).Definition].Tools.ContainsKey(recipe.Tool))
+                    .Select(id=>e.Get<ItemComponent>(id).Definition).FirstOrDefault()??"";
+            if(definition.Length==0)definition=recipe.Inputs.Keys.FirstOrDefault()??"";
+        }
+        else if(step.Action=="trade")definition=step.Argument.Split('|',2)[0];
+        else if(step.Action is "sow" or "eat" or "give" or "care" or "deposit" or "refuel" or "light_fire" or "repair")
+            definition=session.Definitions.Items.ContainsKey(step.Argument)?step.Argument:"";
+
+        if(definition.Length==0||!session.Definitions.Items.TryGetValue(definition,out var item))return ("","","");
+        var shape=tool=="chop"?"axe":tool=="mine"?"pick":
+            item.Tags.Contains("construction",StringComparer.Ordinal)||item.Tags.Contains("fuel",StringComparer.Ordinal)?"bulk":
+            item.Tags.Contains("food",StringComparer.Ordinal)?"food":
+            item.Tags.Contains("seed",StringComparer.Ordinal)?"seed":"item";
+        var color=item.Material switch
+        {
+            "wood"=>"#8d704d",
+            "stone"=>"#9b9c94",
+            "iron"=>"#a7aaa8",
+            "flax"=>"#c8b98b",
+            "wool"=>"#d8d1bd",
+            "organic"=>"#c8a660",
+            _=>"#d4c9ab"
+        };
+        var accent=shape switch
+        {
+            "axe" or "pick"=>item.Material=="iron"?"#d0d2cf":"#aaa9a0",
+            "food"=>"#d8b16b",
+            "seed"=>"#b89d61",
+            _=>"#b99c6a"
+        };
+        return (shape,color,accent);
     }
 
     private void RefreshChunks(SimulationSession session)
