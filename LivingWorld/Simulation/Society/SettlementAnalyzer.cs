@@ -13,6 +13,8 @@ public sealed record SettlementSummary(
     int Families,
     float FoodCalories,
     int Projects,
+    int Facilities,
+    string[] Capabilities,
     string[] Specializations);
 
 public static class SettlementAnalyzer
@@ -112,6 +114,15 @@ public static class SettlementAnalyzer
                 !x.Value.Finished&&e.Try<PositionComponent>(x.Key) is { } position&&
                 (Inside(position.Tile)||position.Tile.Distance(center)<=ResidentReach));
 
+            var localFacilities=e.Store<FacilityComponent>().All
+                .Where(x=>e.Try<PositionComponent>(x.Key) is { } position&&Inside(position.Tile))
+                .ToArray();
+            var capabilities=localFacilities
+                .SelectMany(x=>session.Definitions.Facilities[x.Value.Definition].Capabilities)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(x=>x,StringComparer.Ordinal)
+                .ToArray();
+
             var specializations=members
                 .Select(id=>e.Get<SkillsComponent>(id).Experience
                     .OrderByDescending(x=>x.Value)
@@ -134,6 +145,8 @@ public static class SettlementAnalyzer
                 families.Count,
                 food,
                 projects,
+                localFacilities.Length,
+                capabilities,
                 specializations));
         }
         return result.OrderBy(x=>x.Anchor).ToArray();
@@ -145,7 +158,7 @@ public static class SettlementAnalyzer
             .OrderByDescending(x=>x.Members)
             .ThenBy(x=>x.Anchor)
             .FirstOrDefault()
-            ??new(0,"нет поселений",session.State.Start,0,0,0,0,0,0,0,0,0,[]);
+            ??new(0,"нет поселений",session.State.Start,0,0,0,0,0,0,0,0,0,0,[],[]);
     }
 
     private static int[] LivingPeople(SimulationSession session)

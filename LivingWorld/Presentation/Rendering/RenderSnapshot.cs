@@ -18,8 +18,8 @@ public sealed record RenderChunk(int Key, int X, int Y, long Revision,
 public sealed record RenderSettlement(
     int Anchor, string Name, GridPoint Center,
     int MinX, int MinY, int MaxX, int MaxY,
-    int Homes, int Members, int Families, float FoodCalories, int Projects,
-    ReadOnlyCollection<string> Specializations);
+    int Homes, int Members, int Families, float FoodCalories, int Projects, int Facilities,
+    ReadOnlyCollection<string> Capabilities, ReadOnlyCollection<string> Specializations);
 public sealed record RenderRoom(int Id, ReadOnlyCollection<GridPoint> Tiles);
 public sealed record InspectorSnapshot(string Title, string Text);
 public sealed record ViewRequest(int Selected = 0, GridPoint? Tile = null, bool Debug = false);
@@ -73,7 +73,8 @@ public sealed class RenderSnapshotBuilder
             _homes = s.Entities.Store<ConstructionComponent>().All.Count(x => x.Value.Finished);
             _settlements = SettlementAnalyzer.DescribeAll(session).Select(x=>new RenderSettlement(
                 x.Anchor,x.Name,x.Center,x.MinX,x.MinY,x.MaxX,x.MaxY,x.Homes,x.Members,x.Families,
-                x.FoodCalories,x.Projects,Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
+                x.FoodCalories,x.Projects,x.Facilities,Array.AsReadOnly(x.Capabilities.ToArray()),
+                Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
             _worldText = DescribeWorld(session);
             _systemsText = DescribeSystems(session);
             _inspector = DescribeSelection(session, request);

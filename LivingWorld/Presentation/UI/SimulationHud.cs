@@ -550,6 +550,9 @@ public partial class SimulationHud : CanvasLayer
         Section(text,"застройка");
         text.AppendLine($"домов  {settlement.Homes}");
         text.AppendLine($"строится  {settlement.Projects}");
+        text.AppendLine($"мебели и рабочих объектов  {settlement.Facilities}");
+        if(settlement.Capabilities.Count>0)
+            text.AppendLine($"возможности  {string.Join(", ",settlement.Capabilities)}");
         Section(text,"запасы");
         text.AppendLine($"доступная еда  {settlement.FoodCalories:F0} ккал");
         if(settlement.Members>0)text.AppendLine($"на жителя  {settlement.FoodCalories/settlement.Members:F0} ккал");

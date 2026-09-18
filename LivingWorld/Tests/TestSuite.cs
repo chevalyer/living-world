@@ -296,6 +296,18 @@ public static class TestSuite
             var snapshot=new LivingWorld.Presentation.RenderSnapshotBuilder().Capture(s,1,true,1,0,new(),force:true);
             Equal("seed",snapshot.People.Single(x=>x.Id==id).HeldShape);
         });
+        Test("settlement summary exposes local facility capabilities", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            for(var i=0;i<5;i++)Give(s,id,"plank");
+            var site=FacilityService.FindSite(s,id,D.Facilities["workbench"])!.Value;
+            var workbench=FacilityService.Build(s,id,"workbench",site);
+            Assert(workbench!=0,"workbench build failed");
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Equal(1,settlement.Facilities);
+            Assert(settlement.Capabilities.Contains("workbench"),"settlement lost workstation capability");
+        });
         Test("render snapshot exposes immutable settlement data", ()=>
         {
             var(s, first)=Fixture();
