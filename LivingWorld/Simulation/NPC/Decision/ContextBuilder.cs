@@ -7,6 +7,10 @@ public static class ContextBuilder
         var e=s.Entities;
         var p=e.Get<PositionComponent>(actor).Tile;
         var decision=e.Get<DecisionComponent>(actor);
+        var known=e.Get<MemoryComponent>(actor).Observations
+            .Where(o=>session.Pathfinder.CanReach(p,o.Kind=="project"&&o.WorkPosition.HasValue?o.WorkPosition.Value:o.Position,
+                o.Kind=="shelter"?0:1))
+            .ToList();
         return new PlanningContext
         {
             Actor=actor,
@@ -17,7 +21,7 @@ public static class ContextBuilder
             Definitions=session.Definitions,
             Age=s.Clock.Age(e.Get<IdentityComponent>(actor).BirthDate),
             CanWork=ActionRules.CanWork(s, actor),
-            Known=e.Get<MemoryComponent>(actor).Observations,
+            Known=known,
             Inventory=e.Get<InventoryComponent>(actor).Items.Select(id=>(id, e.Get<ItemComponent>(id))).ToList(),
             Worn=e.Get<EquipmentComponent>(actor).Items,
             Knowledge=e.Get<KnowledgeComponent>(actor),

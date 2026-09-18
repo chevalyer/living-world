@@ -10,6 +10,31 @@ public static class TestSuite
     public static int Run()
     {
         Test("definition references", ()=>D.Validate());
+        Test("world generator honors requested population", ()=>
+        {
+            var state=new WorldGenerator().Generate(D,1847,64,99);
+            Equal(99,state.Entities.Store<IdentityComponent>().Count);
+        });
+        Test("new world population input uses typed text", ()=>
+        {
+            Equal(99,LivingWorld.Presentation.SimulationHud.ParsePopulationInput("99",14));
+            Equal(500,LivingWorld.Presentation.SimulationHud.ParsePopulationInput("999",14));
+            Equal(14,LivingWorld.Presentation.SimulationHud.ParsePopulationInput("oops",14));
+        });
+        Test("reachability rejects disconnected remembered targets", ()=>
+        {
+            var(s,id)=Fixture();
+            for(var y=0;y<20;y++)s.State.Map[new(7,y)].Wall=1;
+            s.State.Map.NavigationRevision++;
+            var plant=Plant(s,new(9,5),"raspberry_bush",3);
+            s.State.Entities.Get<MemoryComponent>(id).Observations.Add(new()
+            {
+                Kind="plant",Entity=plant,Definition="raspberry_bush",Product="raspberry",
+                Position=new(9,5),Quantity=3
+            });
+            Assert(!s.Pathfinder.CanReach(new(5,5),new(9,5),1),"disconnected target reported reachable");
+            Assert(!ContextBuilder.Create(s,id,false).Known.Any(o=>o.Entity==plant),"unreachable memory entered planner context");
+        });
         Test("same seed produces same initial state", ()=>
         {
             var a=new SimulationSession(new WorldGenerator().Generate(D, 1847, 48, 2), D); var b=new SimulationSession(new WorldGenerator().Generate(D, 1847, 48, 2), D); Equal(new SaveService().Hash(a), new SaveService().Hash(b));

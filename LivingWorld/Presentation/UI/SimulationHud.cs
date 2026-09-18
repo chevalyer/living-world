@@ -238,7 +238,7 @@ public partial class SimulationHud : CanvasLayer
         _status.AutowrapMode=TextServer.AutowrapMode.WordSmart;
         box.AddChild(_status);
 
-        var keys=Label("Ctrl+F поиск  ·  F карта  ·  F2 маршрут  ·  F3 слой",10);
+        var keys=Label("Ctrl+F поиск  ·  F карта  ·  F2 маршрут  ·  F3 слой  ·  H интерфейс",10);
         keys.Modulate=new Color("#71817d");
         box.AddChild(keys);
     }
@@ -296,7 +296,18 @@ public partial class SimulationHud : CanvasLayer
         button.AddThemeColorOverride("font_color",new Color("#fff2d1"));
     }
 
+    public bool InterfaceVisible=>_root.Visible;
+    public void ToggleInterface()=>_root.Visible=!_root.Visible;
     public void Status(string message)=>_status.Text=message;
+
+    public static int ParsePopulationInput(string text,int fallback)
+    {
+        var value=fallback;
+        if(int.TryParse(text.Trim(),NumberStyles.Integer,CultureInfo.InvariantCulture,out var parsed)||
+           int.TryParse(text.Trim(),NumberStyles.Integer,CultureInfo.CurrentCulture,out parsed))
+            value=parsed;
+        return Math.Clamp(value,1,500);
+    }
 
     public void WorldChanged()
     {
@@ -466,8 +477,10 @@ public partial class SimulationHud : CanvasLayer
                 Status("сид должен быть целым числом");
                 return;
             }
+            var people=ParsePopulationInput(_people.GetLineEdit().Text,(int)_people.Value);
+            _people.Value=people;
             _modal.Hide();
-            _=Game.NewWorld(seed,_mapSize.GetSelectedId(),(int)_people.Value);
+            _=Game.NewWorld(seed,_mapSize.GetSelectedId(),people);
         });
         Accent(create);
         buttons.AddChild(create);
