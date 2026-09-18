@@ -501,6 +501,99 @@ public static class TestSuite
             var context=ContextBuilder.Create(s,id,false);
             Assert(context.Air>context.OutdoorAir,"planner ignored fire heat");
         });
+        Test("facility definitions are data driven and validated", ()=>
+        {
+            foreach(var id in new[]{"bed","chest","workbench","loom","millstone","forge","oven","well"})
+                Assert(D.Facilities.ContainsKey(id),"missing facility "+id);
+            Assert(D.Recipes["iron_ingot"].Capability=="metalworking","smelting is not capability driven");
+            Assert(D.Recipes["bread"].Capability=="baking","bread is not capability driven");
+        });
+        Test("building a bed consumes materials and creates a physical facility", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            for(var i=0;i<4;i++)Give(s,id,"plank");
+            for(var i=0;i<2;i++)Give(s,id,"fiber");
+            var definition=D.Facilities["bed"];
+            var site=FacilityService.FindSite(s,id,definition);
+            Assert(site.HasValue,"no indoor bed site");
+            var facility=FacilityService.Build(s,id,"bed",site!.Value);
+            Assert(facility!=0,"bed build failed");
+            Equal(0,s.Inventory.Count(id,"plank"));
+            Equal(0,s.Inventory.Count(id,"fiber"));
+            Equal(site.Value,s.State.Entities.Get<PositionComponent>(facility).Tile);
+            Equal("bed",s.State.Entities.Get<FacilityComponent>(facility).Definition);
+        });
+        Test("bed improves real rest compared with floor sleep", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            for(var i=0;i<4;i++)Give(s,id,"plank");
+            for(var i=0;i<2;i++)Give(s,id,"fiber");
+            var site=FacilityService.FindSite(s,id,D.Facilities["bed"])!.Value;
+            var bed=FacilityService.Build(s,id,"bed",site);
+            s.State.Entities.Get<PositionComponent>(id).Tile=site; s.Spatial.Add(id,site);
+            var needs=s.State.Entities.Get<NeedsComponent>(id);
+            needs.Fatigue=1;
+            Assert(new SleepAction().Execute(s,id,new(){Target=bed,Position=site}),"bed sleep failed");
+            var bedFatigue=needs.Fatigue;
+            needs.Fatigue=1;
+            Assert(new SleepAction().Execute(s,id,new(){Position=site}),"floor sleep failed");
+            Assert(bedFatigue<needs.Fatigue,"bed did not improve rest");
+        });
+        Test("chest is household storage rather than free global storage", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            for(var i=0;i<4;i++)Give(s,id,"plank");
+            var site=FacilityService.FindSite(s,id,D.Facilities["chest"])!.Value;
+            var chest=FacilityService.Build(s,id,"chest",site);
+            s.State.Entities.Get<PositionComponent>(id).Tile=site; s.Spatial.Add(id,site);
+            var grain=Give(s,id,"grain");
+            Assert(StorageService.Deposit(s,id,chest,grain),"family chest rejected owner");
+            Equal(chest,s.State.Entities.Get<ItemComponent>(grain).Holder);
+            var outsider=Adult(s,site+new GridPoint(1,0));
+            Assert(!StorageService.Take(s,outsider,chest,"grain"),"outsider accessed family chest");
+            Assert(StorageService.Take(s,id,chest,"grain"),"owner could not recover family item");
+        });
+        Test("well is a physical local water source", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            for(var i=0;i<6;i++)Give(s,id,"granite");
+            for(var i=0;i<2;i++)Give(s,id,"log");
+            var site=FacilityService.FindSite(s,id,D.Facilities["well"]);
+            Assert(site.HasValue,"no well site");
+            var well=FacilityService.Build(s,id,"well",site!.Value);
+            Assert(well!=0,"well build failed");
+            var actorTile=s.State.Map.Neighbors(site.Value).FirstOrDefault(s.State.Map.Walkable,site.Value);
+            s.State.Entities.Get<PositionComponent>(id).Tile=actorTile; s.Spatial.Add(id,actorTile);
+            var needs=s.State.Entities.Get<NeedsComponent>(id); needs.Thirst=.95f;
+            Assert(new DrinkAction().Execute(s,id,new(){Target=well,Position=site.Value}),"well drinking failed");
+            Assert(needs.Thirst<.1f,"well did not hydrate");
+        });
+        Test("facilities survive save and load", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id); new RoomSystem().Update(s);
+            for(var i=0;i<5;i++)Give(s,id,"plank");
+            var site=FacilityService.FindSite(s,id,D.Facilities["workbench"])!.Value;
+            var workbench=FacilityService.Build(s,id,"workbench",site);
+            var saves=new SaveService();
+            var loaded=saves.Deserialize(saves.Serialize(s),D);
+            Assert(loaded.State.Entities.Has<FacilityComponent>(workbench),"facility lost on load");
+            Equal("workbench",loaded.State.Entities.Get<FacilityComponent>(workbench).Definition);
+        });
+        Test("farming desire expands beyond a single crop", ()=>
+        {
+            var(s,id)=Fixture();
+            s.State.Entities.Get<KnowledgeComponent>(id).Facts.Add("farming");
+            var crop=Plant(s,new(6,5),"wheat",4);
+            s.State.Entities.Set(crop,new OwnershipComponent { Owner=id });
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="sown"),"one crop incorrectly satisfied farming");
+        });
         Test("metalworking recipes require a real forge facility", ()=>
         {
             var(s,id)=Fixture();
