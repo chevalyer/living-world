@@ -244,6 +244,35 @@ public partial class WorldView : Node2D
             case "roof": if (Game.DebugView) DrawRect(new Rect2(p - new Vector2(8, 8), new Vector2(16, 16)), new Color(1, 1, 1, .06f)); break;
             case "blueprint": DrawRect(new Rect2(p - new Vector2(7, 7), new Vector2(14, 14)), new Color(1, 1, 1, .18f), false, 1); break;
             case "storage": Pixel(p, -5, -4, 11, 9, entity.Color); Pixel(p, -5, -4, 11, 2, entity.Accent); Pixel(p, -1, -3, 2, 8, "#b09468"); break;
+            case "facility":
+                switch(entity.Shape)
+                {
+                    case "bed":
+                        Pixel(p,-7,-3,14,8,entity.Color); Pixel(p,-6,-2,5,4,entity.Accent); Pixel(p,-7,4,2,3,"#5d4936"); Pixel(p,5,4,2,3,"#5d4936");
+                        break;
+                    case "chest":
+                        Pixel(p,-5,-4,11,9,entity.Color); Pixel(p,-5,-4,11,2,entity.Accent); Pixel(p,-1,-3,2,8,"#c5a66b");
+                        break;
+                    case "forge":
+                        Pixel(p,-6,-3,12,8,entity.Color); Pixel(p,-3,-6,6,5,entity.Accent); Pixel(p,-1,-5,2,4,"#f2c56c");
+                        break;
+                    case "oven":
+                        Pixel(p,-6,-7,12,13,entity.Color); Pixel(p,-3,-3,6,6,"#4b4037"); Pixel(p,-2,-2,4,3,entity.Accent);
+                        break;
+                    case "well":
+                        DrawCircle(p,new float[]{}.Length+6,new Color(entity.Color)); DrawCircle(p,3,new Color("#253338")); Pixel(p,-6,-7,2,7,entity.Accent); Pixel(p,5,-7,2,7,entity.Accent);
+                        break;
+                    case "loom":
+                        Pixel(p,-6,-7,2,14,entity.Color); Pixel(p,5,-7,2,14,entity.Color); Pixel(p,-4,-5,9,2,entity.Accent); Pixel(p,-4,0,9,1,entity.Accent);
+                        break;
+                    case "mill":
+                        DrawCircle(p,6,new Color(entity.Color)); DrawCircle(p,3,new Color(entity.Accent)); Pixel(p,-1,-1,2,2,"#4f4d48");
+                        break;
+                    default:
+                        Pixel(p,-7,1,14,3,entity.Color); Pixel(p,-5,-4,10,5,entity.Accent); Pixel(p,-6,4,2,4,entity.Color); Pixel(p,4,4,2,4,entity.Color);
+                        break;
+                }
+                break;
             case "fire": Pixel(p, -4, 2, 9, 3, "#6a5745"); if (entity.Yield > 0) { Pixel(p, -2, -4, 5, 7, entity.Color); Pixel(p, 0, -7, 2, 8, entity.Accent); } break;
         }
     }
