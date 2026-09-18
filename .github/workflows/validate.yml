@@ -1,0 +1,46 @@
+name: validate
+
+on:
+  push:
+    branches:
+      - main
+      - "update/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: LivingWorld
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup .net
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: structural checks
+        run: python3 scripts/check_sources.py
+
+      - name: restore
+        run: dotnet restore LivingWorld.sln --nologo
+
+      - name: build
+        run: dotnet build LivingWorld.sln -c Release --no-restore --nologo
+
+      - name: regression tests
+        run: dotnet run --project Tests/LivingWorld.Tests.csproj -c Release --no-build
+
+      - name: headless smoke
+        run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 96 --npcs 8 --ticks 1440 --json artifacts/smoke.json
