@@ -228,7 +228,7 @@ public static class TestSuite
                 Directory.Delete(directory, true);
             }
         });
-        Test("phonetic names are deterministic and varied"        Test("phonetic names are deterministic and varied", () =>
+        Test("phonetic names are deterministic and varied", () =>
         {
             var generator = new NameGenerator(D.Names);
             var a = new DeterministicRandom(198);
@@ -305,7 +305,7 @@ public static class TestSuite
                 Directory.Delete(directory, true);
             }
         });
-        Test("visual dirtiness is local to a chunk"        Test("visual dirtiness is local to a chunk", () =>
+        Test("visual dirtiness is local to a chunk", () =>
         {
             var map = new WorldMap(48, 48);
             map.MarkVisualDirty(new(2, 2));
