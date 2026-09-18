@@ -8,7 +8,7 @@ public static class ContextBuilder
         var p=e.Get<PositionComponent>(actor).Tile;
         var decision=e.Get<DecisionComponent>(actor);
         var facilitySites=new Dictionary<string,GridPoint>(StringComparer.Ordinal);
-        if(ActionRules.CanWork(s,actor))
+        if(findBuildSite&&ActionRules.CanWork(s,actor))
             foreach(var definition in session.Definitions.Facilities.Values)
                 if(FacilityService.FindSite(session,actor,definition) is { } site)facilitySites[definition.Id]=site;
         var known=e.Get<MemoryComponent>(actor).Observations

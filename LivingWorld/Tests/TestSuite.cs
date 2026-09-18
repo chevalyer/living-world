@@ -573,6 +573,28 @@ public static class TestSuite
         {
             var(s, id)=Fixture(); var saves=new SaveService(); var json=JsonNode.Parse(saves.Serialize(s))!; json["Components"]!["System.Process"]=new JsonObject(); Throws(()=>saves.Deserialize(json.ToJsonString(), D));
         });
+        Test("pre capability recipe saves remain loadable", ()=>
+        {
+            var(s,_)=Fixture();
+            var saves=new SaveService();
+            var json=JsonNode.Parse(saves.Serialize(s))!;
+            var manifest=System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(json["DefinitionManifest"]!.ToJsonString())!;
+            foreach(var recipe in D.Recipes.Values)
+            {
+                var key="recipe:"+recipe.Id;
+                if(manifest.ContainsKey(key))manifest[key]=DefinitionFingerprint.LegacyRecipeHash(recipe);
+            }
+            json["DefinitionManifest"]=System.Text.Json.JsonSerializer.SerializeToNode(manifest);
+            json["DefinitionsFingerprint"]=DefinitionFingerprint.OfManifest(manifest);
+            var loaded=saves.Deserialize(json.ToJsonString(),D);
+            Equal(s.State.Entities.Count,loaded.State.Entities.Count);
+        });
+        Test("completed homes do not create free invisible storage", ()=>
+        {
+            var(s,id)=Fixture();
+            BuildHome(s,id);
+            Equal(0,s.State.Entities.Store<StorageComponent>().Count);
+        });
         Test("changed definitions are rejected for saves", ()=>
         {
             var(s, id)=Fixture(); var saves=new SaveService(); var json=JsonNode.Parse(saves.Serialize(s))!; json["DefinitionsFingerprint"]="changed"; Throws(()=>saves.Deserialize(json.ToJsonString(), D));

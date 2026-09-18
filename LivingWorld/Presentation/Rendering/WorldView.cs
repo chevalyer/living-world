@@ -260,7 +260,7 @@ public partial class WorldView : Node2D
                         Pixel(p,-6,-7,12,13,entity.Color); Pixel(p,-3,-3,6,6,"#4b4037"); Pixel(p,-2,-2,4,3,entity.Accent);
                         break;
                     case "well":
-                        DrawCircle(p,new float[]{}.Length+6,new Color(entity.Color)); DrawCircle(p,3,new Color("#253338")); Pixel(p,-6,-7,2,7,entity.Accent); Pixel(p,5,-7,2,7,entity.Accent);
+                        DrawCircle(p,6,new Color(entity.Color)); DrawCircle(p,3,new Color("#253338")); Pixel(p,-6,-7,2,7,entity.Accent); Pixel(p,5,-7,2,7,entity.Accent);
                         break;
                     case "loom":
                         Pixel(p,-6,-7,2,14,entity.Color); Pixel(p,5,-7,2,14,entity.Color); Pixel(p,-4,-5,9,2,entity.Accent); Pixel(p,-4,0,9,1,entity.Accent);

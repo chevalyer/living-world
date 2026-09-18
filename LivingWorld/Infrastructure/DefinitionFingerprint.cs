@@ -6,6 +6,18 @@ using System.Text.Json;
 
 public static class DefinitionFingerprint
 {
+    public static string LegacyRecipeHash(RecipeDefinition recipe)
+    {
+        var legacy=new LegacyRecipeDefinition(
+            recipe.Id,recipe.Name,recipe.Operation,recipe.Inputs,recipe.Output,recipe.Count,
+            recipe.Skill,recipe.Knowledge,recipe.Tool,recipe.Minutes);
+        return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(legacy)));
+    }
+
+    private sealed record LegacyRecipeDefinition(
+        string Id,string Name,string Operation,Dictionary<string,int> Inputs,string Output,int Count,
+        string Skill,string Knowledge,string Tool,float Minutes);
+
     public static string OfManifest(Dictionary<string,string> manifest)
         =>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join(";",manifest.OrderBy(x=>x.Key,StringComparer.Ordinal).Select(x=>x.Key+"="+x.Value)))));
     public static Dictionary<string,string> Manifest(DefinitionCatalog catalog)

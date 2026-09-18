@@ -132,11 +132,8 @@ public static class BuildingService
         s.Map.MarkVisualDirty(next.Position);
         session.RoomsDirty=true;
         session.Events.Publish(new SkillUsedEvent(actor, "building", 5));
-        if (project.Finished)
-        {
+        if(project.Finished)
             s.Log("Дом завершен. Участников: "+project.Contributors.Count+".");
-            StorageService.Create(session, e.Get<PositionComponent>(projectId).Tile, projectId);
-        }
         return true;
     }
 }
