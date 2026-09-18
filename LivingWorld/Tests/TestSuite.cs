@@ -447,6 +447,16 @@ public static class TestSuite
             Equal(-1,chop.Effects.Single(x=>x.Fact=="tool:chop").Amount);
             Equal(-1,mine.Effects.Single(x=>x.Fact=="tool:mine").Amount);
         });
+        Test("ground item planning uses observed condition", ()=>
+        {
+            var(s,id)=Fixture();
+            var axe=s.Inventory.Spawn("stone_axe",new(6,5));
+            s.State.Entities.Get<ItemComponent>(axe).Durability=6;
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            var option=new PickUpAction().Options(context).Single(o=>o.Step.Target==axe);
+            Equal(3,option.Effects.Single(x=>x.Fact=="tool:chop").Amount);
+        });
         Test("planner tracks remaining tool uses", ()=>
         {
             var(s,id)=Fixture();

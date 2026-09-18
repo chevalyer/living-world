@@ -100,6 +100,9 @@ public sealed class PerceptionSystem : ISimulationSystem
                 o.Kind="item";
                 o.Definition=item.Definition;
                 o.Product=item.Definition;
+                o.Freshness=item.Freshness;
+                o.Durability=item.Durability;
+                o.Quality=item.Quality;
                 o.Quantity=session.Definitions.Items[item.Definition].Calories>0&&item.Freshness<.1f?0:1;
             }
             else if (e.Try<IdentityComponent>(id) is { } identity&&e.Get<HealthComponent>(id).Alive)
@@ -135,8 +138,13 @@ public sealed class PerceptionSystem : ISimulationSystem
                 o.Kind="storage";
                 var stored=e.Get<InventoryComponent>(id).Items.Select(i=>(Id:i,Item:e.Get<ItemComponent>(i))).ToArray();
                 o.Spoiled=stored.Count(x=>session.Definitions.Items[x.Item.Definition].Calories>0&&x.Item.Freshness<.1f);
-                o.Items=stored.Where(x=>session.Definitions.Items[x.Item.Definition].Calories<=0||x.Item.Freshness>=.1f)
-                    .GroupBy(x=>x.Item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
+                o.Items=stored.Where(x=>
+                {
+                    var definition=session.Definitions.Items[x.Item.Definition];
+                    if(definition.Calories>0&&x.Item.Freshness<.1f)return false;
+                    if(definition.Tools.Count>0&&x.Item.Durability<=0)return false;
+                    return true;
+                }).GroupBy(x=>x.Item.Definition).ToDictionary(g=>g.Key,g=>g.Count());
                 o.Quantity=o.Items.Values.Sum();
             }
             else if (e.Try<FireComponent>(id) is { } fire)

@@ -18,6 +18,9 @@ public sealed record Observation
     public float Fatigue { get; set; }
     public float Health { get; set; } = 100;
     public float Temperature { get; set; }
+    public float Freshness { get; set; } = 1;
+    public float Durability { get; set; } = 100;
+    public float Quality { get; set; } = 1;
     public int Age { get; set; }
     public string Sex { get; set; } = "";
     public int Partner { get; set; }
