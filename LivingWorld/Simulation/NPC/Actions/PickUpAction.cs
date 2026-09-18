@@ -27,7 +27,7 @@ public sealed class PickUpAction : SimAction
     {
         var d=c.Definitions.Items[product];
         foreach (var tool in d.Tools)op.Effects.Add(new("tool:"+tool.Key, 1, true));
-        if (d.Calories>0)op.Effects.Add(new("stocked", 1, true));
+        if(d.Calories>0)op.Effects.Add(new("food.reserve",(int)MathF.Max(1,d.Calories)));
     }
     public override bool Execute(SimulationSession s, int actor, ActionStep step)
     {

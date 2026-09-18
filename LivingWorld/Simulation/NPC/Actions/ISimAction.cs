@@ -45,5 +45,9 @@ public abstract class SimAction : ISimAction
     };
     protected static string Item(string id)=>PlanningContext.ItemFact(id);
     protected static string Source(int id)=>"source:"+id;
-    protected static int FindItem(SimulationSession s, int actor, string definition)=>s.Inventory.Items(actor).FirstOrDefault(id=>s.State.Entities.Get<ItemComponent>(id).Definition==definition);
+    protected static int FindItem(SimulationSession s,int actor,string definition)=>s.Inventory.Items(actor)
+        .Where(id=>s.State.Entities.Get<ItemComponent>(id).Definition==definition)
+        .OrderByDescending(id=>s.State.Entities.Get<ItemComponent>(id).Freshness)
+        .ThenByDescending(id=>s.State.Entities.Get<ItemComponent>(id).Durability)
+        .FirstOrDefault();
 }

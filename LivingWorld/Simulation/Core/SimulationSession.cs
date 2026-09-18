@@ -44,7 +44,7 @@ public sealed class SimulationSession
         Spatial.Rebuild(state.Entities);
         Pathfinder=new(state.Map);
         Inventory=new(state, definitions, Spatial, Events);
-        ISimAction[] actions=[new MoveAction(), new ObserveAction(), new HarvestAction(), new PickUpAction(), new EatAction(), new DrinkAction(), new BreakIceAction(), new SleepAction(), new WearAction(), new RemoveClothingAction(), new ChopAction(), new MineAction(), new CraftAction(), new LightFireAction(), new WarmUpAction(), new RefuelAction(), new PlanBuildingAction(), new BuildAction(), new RepairAction(), new DropAction(), new SowAction(), new TalkAction(), new GiveAction(), new TradeAction(), new TeachAction(), new PartnerAction(), new StartFamilyAction(), new CareAction(), new CheckChildAction(), new PlayAction(), new TakeAction(), new DepositAction(), new DiscardSpoiledAction()];
+        ISimAction[] actions=[new MoveAction(), new ObserveAction(), new HarvestAction(), new PickUpAction(), new EatAction(), new DrinkAction(), new BreakIceAction(), new SleepAction(), new WearAction(), new RemoveClothingAction(), new CoolDownAction(), new ChopAction(), new MineAction(), new CraftAction(), new LightFireAction(), new WarmUpAction(), new RefuelAction(), new PlanBuildingAction(), new BuildAction(), new RepairAction(), new DropAction(), new SowAction(), new TalkAction(), new GiveAction(), new TradeAction(), new TeachAction(), new PartnerAction(), new StartFamilyAction(), new CareAction(), new CheckChildAction(), new PlayAction(), new TakeAction(), new DepositAction(), new DiscardSpoiledAction()];
         foreach (var action in actions)Actions.Add(action);
         _=new SkillSystem(this);
         _=new RelationshipSystem(this);
