@@ -31,6 +31,8 @@ public sealed class SimulationSession
     public int PathsThisTick { get; set; }
     public int MaxPathsPerTick { get; set; } = 6;
     public int MaxDecisionsPerTick { get; set; } = 12;
+    public Dictionary<string,int> FailureReasons { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string,int> FailureActions { get; } = new(StringComparer.Ordinal);
     public double LastTickMilliseconds
     { get; private set; }
     public SimulationSession(WorldState state, DefinitionCatalog definitions)
@@ -42,7 +44,7 @@ public sealed class SimulationSession
         Spatial.Rebuild(state.Entities);
         Pathfinder=new(state.Map);
         Inventory=new(state, definitions, Spatial, Events);
-        ISimAction[] actions=[new MoveAction(), new ObserveAction(), new HarvestAction(), new PickUpAction(), new EatAction(), new DrinkAction(), new BreakIceAction(), new SleepAction(), new WearAction(), new RemoveClothingAction(), new ChopAction(), new MineAction(), new CraftAction(), new LightFireAction(), new WarmUpAction(), new RefuelAction(), new PlanBuildingAction(), new BuildAction(), new RepairAction(), new DropAction(), new SowAction(), new TalkAction(), new GiveAction(), new TradeAction(), new TeachAction(), new PartnerAction(), new StartFamilyAction(), new CareAction(), new PlayAction(), new TakeAction(), new DepositAction(), new DiscardSpoiledAction()];
+        ISimAction[] actions=[new MoveAction(), new ObserveAction(), new HarvestAction(), new PickUpAction(), new EatAction(), new DrinkAction(), new BreakIceAction(), new SleepAction(), new WearAction(), new RemoveClothingAction(), new CoolDownAction(), new ChopAction(), new MineAction(), new CraftAction(), new LightFireAction(), new WarmUpAction(), new RefuelAction(), new PlanBuildingAction(), new BuildAction(), new RepairAction(), new DropAction(), new SowAction(), new TalkAction(), new GiveAction(), new TradeAction(), new TeachAction(), new PartnerAction(), new StartFamilyAction(), new CareAction(), new CheckChildAction(), new PlayAction(), new TakeAction(), new DepositAction(), new DiscardSpoiledAction()];
         foreach (var action in actions)Actions.Add(action);
         _=new SkillSystem(this);
         _=new RelationshipSystem(this);
@@ -95,15 +97,41 @@ public sealed class SimulationSession
         movement.Progress=0;
         Reservations.Release(actor);
     }
-    public void FailPlan(int actor, string reason)
+    public void Replan(int actor,string reason,int delay=3)
+    {
+        CancelPlan(actor);
+        var decision=State.Entities.Get<DecisionComponent>(actor);
+        decision.LastFailure=reason;
+        decision.LastFailureTick=State.Clock.Tick;
+        decision.NextDecision=State.Clock.Tick+delay;
+    }
+    public void FailPlan(int actor,string reason)
     {
         var decision=State.Entities.Get<DecisionComponent>(actor);
         var step=decision.Plan.FirstOrDefault();
-        if (step is not null)
+        if(step is not null)
         {
-            foreach (var memory in State.Entities.Get<MemoryComponent>(actor).Observations.Where(o=>o.Entity==step.Target&&step.Target!=0||o.Position==step.Position))memory.UnreachableUntil=State.Clock.Tick+90;
-            Events.Publish(new ActionFailedEvent(actor, step.Action, reason));
+            if(reason is "маршрут недоступен" or "цель вне досягаемости")
+            {
+                var intended=step.Action=="move"?step.Argument:step.Action;
+                var kind=intended switch
+                {
+                    "drink" or "break_ice"=>"water",
+                    "warm_up" or "sleep"=>"shelter",
+                    "harvest" or "chop"=>"plant",
+                    "mine"=>"resource",
+                    "pickup"=>"item",
+                    _=>""
+                };
+                foreach(var memory in State.Entities.Get<MemoryComponent>(actor).Observations.Where(o=>
+                    step.Target!=0?o.Entity==step.Target:o.Position==step.Position&&(kind.Length==0||o.Kind==kind)))
+                    memory.UnreachableUntil=State.Clock.Tick+360;
+            }
+            Events.Publish(new ActionFailedEvent(actor,step.Action,reason));
+            var failureAction=step.Action=="move"&&step.Argument.Length>0?"move:"+step.Argument:step.Action;
+            FailureActions[failureAction]=FailureActions.GetValueOrDefault(failureAction)+1;
         }
+        FailureReasons[reason]=FailureReasons.GetValueOrDefault(reason)+1;
         CancelPlan(actor);
         decision.LastFailure=reason;
         decision.LastFailureTick=State.Clock.Tick;

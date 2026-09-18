@@ -19,10 +19,11 @@ public sealed class TemperatureSystem : ISimulationSystem
             var target=thermal.Metabolism<=0?air:37+Math.Clamp((effective-18)*.06f, -5, 3);
             thermal.Temperature+=(target-thermal.Temperature)/Math.Max(1, thermal.HeatCapacity);
             var health=s.Entities.Try<HealthComponent>(id);
-            if (health is
-            {
-                Alive:true
-            })health.Value-=Math.Max(0, 34.5f-thermal.Temperature)*.06f+Math.Max(0, thermal.Temperature-39.5f)*.05f;
+            if (health is not { Alive:true })continue;
+            var cold=Math.Max(0,34.5f-thermal.Temperature)*.06f;
+            var heat=Math.Max(0,thermal.Temperature-39.5f)*.05f;
+            if(cold>0)health.Damage(cold,"переохлаждение",s.Clock.Tick);
+            if(heat>0)health.Damage(heat,"перегрев",s.Clock.Tick);
         }
         return count;
     }

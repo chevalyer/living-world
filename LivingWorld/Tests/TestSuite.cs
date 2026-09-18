@@ -227,6 +227,278 @@ public static class TestSuite
             Equal(1, snapshot.Settlements[0].Homes);
             Assert(snapshot.People.Any(x=>x.Id==first&&!string.IsNullOrWhiteSpace(x.Name)), "person name missing from render snapshot");
         });
+        Test("fatal dehydration remains the recorded cause after drinking", ()=>
+        {
+            var(s,id)=Fixture();
+            s.State.Map[new(6,5)].Water=WaterKind.River;
+            var health=s.State.Entities.Get<HealthComponent>(id);
+            var needs=s.State.Entities.Get<NeedsComponent>(id);
+            health.Value=.05f; needs.Thirst=1;
+            new NeedsSystem().Update(s);
+            Assert(health.Value<=0,"dehydration was not fatal");
+            Assert(new DrinkAction().Execute(s,id,new(){Position=new(6,5)}),"last drink failed");
+            new LifeSystem().Update(s);
+            Equal("обезвоживание",health.DeathReason);
+        });
+        Test("critical child can still receive care interaction", ()=>
+        {
+            var(s,parent)=Fixture();
+            var child=new NpcFactory(D).Spawn(s.State,new(6,5),"female",s.State.Clock.Now);
+            s.Spatial.Add(child,new(6,5));
+            s.State.Entities.Get<FamilyComponent>(parent).Children.Add(child);
+            s.State.Entities.Get<NeedsComponent>(child).Thirst=.96f;
+            Assert(s.Interactions.Begin(parent,child,10,"care"),"critical thirst blocked care");
+            s.Interactions.End(parent);
+        });
+        Test("perception records child thirst fatigue and health", ()=>
+        {
+            var(s,parent)=Fixture();
+            var child=new NpcFactory(D).Spawn(s.State,new(6,5),"female",s.State.Clock.Now);
+            s.Spatial.Add(child,new(6,5));
+            s.State.Entities.Get<NeedsComponent>(child).Thirst=.83f;
+            s.State.Entities.Get<NeedsComponent>(child).Fatigue=.71f;
+            s.State.Entities.Get<HealthComponent>(child).Value=64;
+            PerceptionSystem.Observe(s,parent,s.State.Entities.Get<MemoryComponent>(parent));
+            var observation=s.State.Entities.Get<MemoryComponent>(parent).Observations.Single(o=>o.Entity==child);
+            Equal(.83f,observation.Thirst);
+            Equal(.71f,observation.Fatigue);
+            Equal(64f,observation.Health);
+        });
+        Test("water memory keeps accessible shoreline samples", ()=>
+        {
+            var(s,id)=Fixture();
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var water=s.State.Entities.Get<MemoryComponent>(id).Observations.Where(o=>o.Kind=="water").ToArray();
+            Assert(water.Length>0,"freshwater not perceived");
+            Assert(water.All(o=>s.State.Map[o.Position].Ice>=.15f||s.State.Map.Neighbors(o.Position).Any(s.State.Map.Walkable)),"unreachable interior water remembered");
+            Assert(water.Length<10,"water cells still flood memory");
+        });
+        Test("thirsty child produces a targeted care plan", ()=>
+        {
+            var(s,parent)=Fixture();
+            var child=new NpcFactory(D).Spawn(s.State,new(6,5),"female",s.State.Clock.Now);
+            s.Spatial.Add(child,new(6,5));
+            s.State.Entities.Get<FamilyComponent>(parent).Children.Add(child);
+            s.State.Entities.Get<FamilyComponent>(child).Mother=parent;
+            s.State.Entities.Get<NeedsComponent>(child).Thirst=.82f;
+            Give(s,parent,"raspberry");
+            PerceptionSystem.Observe(s,parent,s.State.Entities.Get<MemoryComponent>(parent));
+            var context=ContextBuilder.Create(s,parent);
+            var desire=new SocialEvaluator().Evaluate(context).First(x=>x.Fact==$"cared:{child}");
+            var plan=s.Planner.Find(context,s.Actions.All.Where(a=>!a.RequiresWork||context.CanWork).SelectMany(a=>a.Options(context)).ToList(),desire);
+            Assert(plan is not null&&plan.Steps.Any(x=>x.Action=="care"&&x.Target==child),"parent cannot plan care for thirsty child");
+        });
+        Test("planner uses an ice hole for frozen freshwater", ()=>
+        {
+            var(s,id)=Fixture();
+            var water=new GridPoint(6,5);
+            s.State.Map[water].Water=WaterKind.River;
+            s.State.Map[water].Ice=.2f;
+            Give(s,id,"stone_pick");
+            var memory=s.State.Entities.Get<MemoryComponent>(id);
+            memory.Observations.Add(new(){Kind="water",Position=water,Quantity=0,SeenTick=s.State.Clock.Tick});
+            var context=ContextBuilder.Create(s,id);
+            var plan=s.Planner.Find(context,s.Actions.All.Where(a=>!a.RequiresWork||context.CanWork).SelectMany(a=>a.Options(context)).ToList(),new("hydrated","test",10));
+            Assert(plan is not null&&plan.Steps.Any(x=>x.Action=="break_ice"),"frozen water did not produce break ice plan");
+        });
+        Test("fatal overheating records overheating", ()=>
+        {
+            var(s,id)=Fixture();
+            var health=s.State.Entities.Get<HealthComponent>(id);
+            health.Value=.01f;
+            s.State.Entities.Get<ThermalComponent>(id).Temperature=41;
+            new TemperatureSystem().Update(s);
+            new LifeSystem().Update(s);
+            Equal("перегрев",health.DeathReason);
+        });
+        Test("critical unknown thirst triggers emergency exploration", ()=>
+        {
+            var(s,id)=Fixture();
+            s.State.Entities.Get<MemoryComponent>(id).Observations.Clear();
+            s.State.Entities.Get<NeedsComponent>(id).Thirst=.9f;
+            var decision=s.State.Entities.Get<DecisionComponent>(id);
+            decision.Plan=[new(){Action="sleep",Position=new(5,5),Duration=120,Local=true}];
+            decision.DesiredFact="rested";
+            decision.ChosenScore=1;
+            while((s.State.Clock.Tick+id)%3!=0)s.State.Clock.Tick++;
+            new DecisionSystem().Update(s);
+            Equal("explore",decision.DesiredFact);
+            Assert(decision.Motive.StartsWith("срочно ищет",StringComparison.Ordinal),"survival need did not force exploration");
+        });
+        Test("planner eats enough food instead of one token item", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"grain"); Give(s,id,"grain");
+            s.State.Entities.Get<NeedsComponent>(id).Hunger=.7f;
+            var context=ContextBuilder.Create(s,id);
+            var desire=new PhysiologyEvaluator().Evaluate(context).First(x=>x.Fact=="fed");
+            Assert(desire.Minimum>650,"test hunger does not require multiple food items");
+            var plan=s.Planner.Find(context,s.Actions.All.SelectMany(a=>a.Options(context)).ToList(),desire);
+            Assert(plan is not null,"no feeding plan");
+            Assert(plan!.Steps.Count(x=>x.Action=="eat")>=2,"planner treated one food item as fully fed");
+        });
+        Test("ice can be broken while standing on frozen water", ()=>
+        {
+            var(s,id)=Fixture();
+            s.State.Map[new(5,5)].Water=WaterKind.River;
+            s.State.Map[new(5,5)].Ice=.2f;
+            Give(s,id,"stone_pick");
+            Assert(new BreakIceAction().Execute(s,id,new(){Position=new(5,5)}),"ice under actor could not be broken");
+            Equal(0f,s.State.Map[new(5,5)].Ice);
+        });
+        Test("sowing selects a visible valid tile instead of blocked ground", ()=>
+        {
+            var(s,id)=Fixture();
+            s.State.Map[new(5,5)].Floor=123;
+            Give(s,id,"grain");
+            var context=ContextBuilder.Create(s,id);
+            var option=new SowAction().Options(context).FirstOrDefault();
+            Assert(option is not null,"no sow option on nearby valid soil");
+            Assert(option!.Step.Position!=new GridPoint(5,5),"sow stayed on blocked current tile");
+            Assert(s.State.Map[option.Step.Position].Floor==0&&s.State.Map[option.Step.Position].Water==WaterKind.None,"invalid sow tile selected");
+        });
+        Test("storage serves fresh food and cleanup destroys spoiled food", ()=>
+        {
+            var(s,id)=Fixture();
+            var storage=StorageService.Create(s,new(5,5),0);
+            var rotten=Give(s,id,"grain"); Assert(StorageService.Deposit(s,id,storage,rotten),"deposit rotten source");
+            s.State.Entities.Get<ItemComponent>(rotten).Freshness=0;
+            var fresh=Give(s,id,"grain"); Assert(StorageService.Deposit(s,id,storage,fresh),"deposit fresh source");
+            Assert(StorageService.Take(s,id,storage,"grain"),"fresh grain not taken");
+            Equal(id,s.State.Entities.Get<ItemComponent>(fresh).Holder);
+            Equal(storage,s.State.Entities.Get<ItemComponent>(rotten).Holder);
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            var cleanup=new DiscardSpoiledAction().Options(context).First(o=>o.Step.Target==storage);
+            Assert(new DiscardSpoiledAction().Execute(s,id,cleanup.Step),"storage cleanup failed");
+            Assert(!s.State.Entities.Exists(rotten),"spoiled storage item survived cleanup");
+        });
+        Test("distant descendants may partner while first cousins remain related", ()=>
+        {
+            var(s,root)=Fixture();
+            var childA=Adult(s,new(6,5)); var childB=Adult(s,new(7,5));
+            s.State.Entities.Get<FamilyComponent>(childA).Mother=root;
+            s.State.Entities.Get<FamilyComponent>(childB).Mother=root;
+            var grandA=Adult(s,new(8,5)); var grandB=Adult(s,new(9,5));
+            s.State.Entities.Get<FamilyComponent>(grandA).Mother=childA;
+            s.State.Entities.Get<FamilyComponent>(grandB).Mother=childB;
+            Assert(FamilyRules.Related(s.State,grandA,grandB),"first cousins were allowed");
+            var greatA=Adult(s,new(10,5)); var greatB=Adult(s,new(11,5));
+            s.State.Entities.Get<FamilyComponent>(greatA).Mother=grandA;
+            s.State.Entities.Get<FamilyComponent>(greatB).Mother=grandB;
+            Assert(!FamilyRules.Related(s.State,greatA,greatB),"distant descendants remain permanently blocked");
+        });
+        Test("teaching transfers the requested knowledge only", ()=>
+        {
+            var(s,teacher)=Fixture();
+            var student=Adult(s,new(6,5));
+            var knowledge=s.State.Entities.Get<KnowledgeComponent>(teacher);
+            knowledge.Facts.Clear(); knowledge.Facts.UnionWith(["crafting","building"]);
+            s.State.Entities.Get<KnowledgeComponent>(student).Facts.Clear();
+            s.State.Entities.Get<SkillsComponent>(teacher).Experience["crafting"]=100;
+            Assert(new TeachAction().Execute(s,teacher,new(){Target=student,Argument="crafting",Duration=30}),"teaching failed");
+            s.Events.Flush();
+            var learned=s.State.Entities.Get<KnowledgeComponent>(student).Facts;
+            Assert(learned.Contains("crafting"),"requested knowledge missing");
+            Assert(!learned.Contains("building"),"unrelated knowledge leaked");
+        });
+        Test("iron tools can use iron ingots for repairs", ()=>
+        {
+            var(s,id)=Fixture();
+            var pick=Give(s,id,"iron_pick");
+            s.State.Entities.Get<ItemComponent>(pick).Durability=10;
+            Give(s,id,"iron_ingot");
+            var option=new RepairAction().Options(ContextBuilder.Create(s,id)).FirstOrDefault(o=>o.Step.Target==pick);
+            Assert(option is not null,"iron repair option missing");
+            Equal("iron_ingot",option!.Step.Argument);
+        });
+        Test("harvested ground resources are not permanently owned", ()=>
+        {
+            var(s,id)=Fixture();
+            var bush=Plant(s,new(6,5),"raspberry_bush",3);
+            Assert(new HarvestAction().Execute(s,id,new(){Target=bush,Position=new(6,5)}),"harvest failed");
+            Assert(s.State.Entities.Store<ItemComponent>().All.All(x=>s.State.Entities.Get<OwnershipComponent>(x.Key).Owner==0),"harvest leftovers stayed private");
+        });
+        Test("settlement names use the phonetic name generator", ()=>
+        {
+            var(s,id)=Fixture();
+            var home=FinishedProject(s,new(4,4));
+            s.State.Entities.Get<FamilyComponent>(id).HomeProject=home;
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            var expected=new NameGenerator(D.Names).GenerateWord(new DeterministicRandom(RandomService.Hash(s.State.Seed,$"settlement:{home}:0")),2,4);
+            Equal(expected,settlement.Name);
+            Assert(settlement.Name.ToLowerInvariant().All(ch=>(D.Names.Vowels+D.Names.Consonants).Contains(ch)),"settlement name uses preset fragments");
+        });
+        Test("chop and mine consume planned tool uses", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"stone_axe"); Give(s,id,"stone_pick");
+            var tree=Plant(s,new(6,5),"oak",6);
+            var resource=s.State.Entities.Create();
+            s.State.Entities.Set(resource,new PositionComponent { Tile=new(6,6) });
+            s.State.Entities.Set(resource,new ResourceComponent { Product="granite",Units=6 });
+            s.Spatial.Add(resource,new(6,6));
+            var memory=s.State.Entities.Get<MemoryComponent>(id);
+            memory.Observations.Add(new(){Kind="plant",Entity=tree,Definition="oak",Product="log",Position=new(6,5),Quantity=6});
+            memory.Observations.Add(new(){Kind="resource",Entity=resource,Product="granite",Position=new(6,6),Quantity=6});
+            var context=ContextBuilder.Create(s,id);
+            var chop=new ChopAction().Options(context).Single();
+            var mine=new MineAction().Options(context).Single();
+            Equal(-1,chop.Effects.Single(x=>x.Fact=="tool:chop").Amount);
+            Equal(-1,mine.Effects.Single(x=>x.Fact=="tool:mine").Amount);
+        });
+        Test("ground item planning uses observed condition", ()=>
+        {
+            var(s,id)=Fixture();
+            var axe=s.Inventory.Spawn("stone_axe",new(6,5));
+            s.State.Entities.Get<ItemComponent>(axe).Durability=6;
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            var option=new PickUpAction().Options(context).Single(o=>o.Step.Target==axe);
+            Equal(3,option.Effects.Single(x=>x.Fact=="tool:chop").Amount);
+        });
+        Test("planner tracks remaining tool uses", ()=>
+        {
+            var(s,id)=Fixture();
+            var pick=Give(s,id,"stone_pick");
+            s.State.Entities.Get<ItemComponent>(pick).Durability=1;
+            Equal(1,ContextBuilder.Create(s,id).InitialState().Get("tool:mine"));
+            s.State.Entities.Get<ItemComponent>(pick).Durability=10;
+            Equal(5,ContextBuilder.Create(s,id).InitialState().Get("tool:mine"));
+        });
+        Test("planning temperature includes nearby fire heat", ()=>
+        {
+            var(s,id)=Fixture();
+            var fire=s.State.Entities.Create();
+            s.State.Entities.Set(fire,new PositionComponent { Tile=new(5,5) });
+            s.State.Entities.Set(fire,new FireComponent { FuelMinutes=200,Heat=20 });
+            s.Spatial.Add(fire,new(5,5));
+            var context=ContextBuilder.Create(s,id,false);
+            Assert(context.Air>context.OutdoorAir,"planner ignored fire heat");
+        });
+        Test("planner can compose fire before a heated recipe", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"iron_ore"); Give(s,id,"iron_ore");
+            Give(s,id,"log"); Give(s,id,"log"); Give(s,id,"log");
+            s.State.Entities.Get<KnowledgeComponent>(id).Facts.Add("smithing");
+            var context=ContextBuilder.Create(s,id);
+            var plan=s.Planner.Find(context,s.Actions.All.SelectMany(a=>a.Options(context)).ToList(),new(PlanningContext.ItemFact("iron_ingot"),"test",1));
+            Assert(plan is not null,"heated craft plan missing");
+            var actions=plan!.Steps.Select(x=>x.Action).ToArray();
+            Assert(actions.Contains("light_fire")&&actions.Contains("craft"),"fire and craft were not composed");
+            Assert(Array.IndexOf(actions,"light_fire")<Array.IndexOf(actions,"craft"),"craft planned before fire");
+        });
+        Test("ordinary action failure does not poison location memory", ()=>
+        {
+            var(s,id)=Fixture();
+            var bush=Plant(s,new(6,5),"raspberry_bush",3);
+            var memory=new Observation{Kind="plant",Entity=bush,Definition="raspberry_bush",Product="raspberry",Position=new(6,5),Quantity=3};
+            s.State.Entities.Get<MemoryComponent>(id).Observations.Add(memory);
+            s.State.Entities.Get<DecisionComponent>(id).Plan=[new(){Action="harvest",Target=bush,Position=new(6,5)}];
+            s.FailPlan(id,"ресурс уже занят");
+            Equal(0L,memory.UnreachableUntil);
+        });
         Test("separate save paths do not overwrite each other", ()=>
         {
             var(a, _)=Fixture();
@@ -658,7 +930,7 @@ internal sealed class ReferenceForwardPlanner
         var expanded=0;
         while (queue.TryDequeue(out var node, out _)&&expanded++<NodeBudget)
         {
-            if (node.State.Get(desired.Fact)>0)return new(Compile(context, node.Path), node.Cost, expanded);
+            if (node.State.Get(desired.Fact)>=desired.Minimum)return new(Compile(context, node.Path), node.Cost, expanded);
             if (node.Path.Count>=MaxDepth)continue;
             foreach (var option in selected)
             {

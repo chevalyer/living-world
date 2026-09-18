@@ -77,7 +77,7 @@ public sealed class ForwardPlanner
         var expanded = 0;
         while (queue.TryDequeue(out var node, out _) && expanded++ < NodeBudget)
         {
-            if (node.Values[goalIndex] > 0)
+            if (node.Values[goalIndex] >= desired.Minimum)
             {
                 var path = new List<ActionOption>();
                 for (var cursor = node; cursor.Via is not null; cursor = cursor.Parent!) path.Add(cursor.Via.Option);

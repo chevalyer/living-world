@@ -25,6 +25,26 @@ public sealed class ActionExecutionSystem : ISimulationSystem
             {
                 var movement=e.Get<MovementComponent>(actor);
                 var p=e.Get<PositionComponent>(actor).Tile;
+                if(step.Target!=0&&session.Actions.Has(step.Argument))
+                {
+                    var intended=session.Actions[step.Argument];
+                    GridPoint? dynamicTarget=null;
+                    if(step.Argument=="build"&&e.Try<ConstructionComponent>(step.Target) is { Finished:false } project)
+                        dynamicTarget=project.Elements[project.Completed].Position;
+                    else if(intended.EngagesTarget&&e.Try<PositionComponent>(step.Target) is { } targetPosition)
+                        dynamicTarget=targetPosition.Tile;
+                    if(dynamicTarget.HasValue&&dynamicTarget.Value!=step.Position)
+                    {
+                        step.Position=dynamicTarget.Value;
+                        movement.Path.Clear();
+                        movement.Destination=null;
+                    }
+                    if((intended.Exclusive||intended.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
+                    {
+                        session.Replan(actor,intended.EngagesTarget?"собеседник уже занят":"ресурс уже занят");
+                        continue;
+                    }
+                }
                 // A moving NPC may have left its observed location. We learn that only on arrival.
                 if (p.Distance(step.Position)<=step.Range)
                 {
@@ -47,9 +67,39 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                 }
                 continue;
             }
-            if (!action.CanExecute(session, actor, step, out var reason))
+            if(action.EngagesTarget&&session.Reservations.Entries.TryGetValue(actor,out var incoming)&&incoming.Actor!=actor&&incoming.Expires>s.Clock.Tick)
             {
-                session.FailPlan(actor, reason);
+                session.Replan(actor,"ожидает собеседника");
+                continue;
+            }
+            if(step.Action=="build"&&e.Try<ConstructionComponent>(step.Target) is { } projectState)
+            {
+                if(projectState.Finished)
+                {
+                    session.Replan(actor,"стройка уже завершена");
+                    continue;
+                }
+                var work=projectState.Elements[projectState.Completed].Position;
+                step.Position=work;
+                if(e.Get<PositionComponent>(actor).Tile.Distance(work)>step.Range)
+                {
+                    decision.Plan.Insert(0,new ActionStep { Action="move",Position=work,Range=step.Range,Target=step.Target,Argument="build",Duration=1 });
+                    continue;
+                }
+            }
+            else if(action.EngagesTarget&&step.Target!=0&&e.Try<PositionComponent>(step.Target) is { } liveTarget)
+            {
+                step.Position=liveTarget.Tile;
+                if(e.Get<PositionComponent>(actor).Tile.Distance(step.Position)>step.Range)
+                {
+                    decision.Plan.Insert(0,new ActionStep { Action="move",Position=step.Position,Range=step.Range,Target=step.Target,Argument=step.Action,Duration=1 });
+                    continue;
+                }
+            }
+            if(!action.CanExecute(session,actor,step,out var reason))
+            {
+                if(Transient(action,reason))session.Replan(actor,reason,12);
+                else session.FailPlan(actor,reason);
                 continue;
             }
             if (e.Get<PositionComponent>(actor).Tile.Distance(step.Position)>step.Range)
@@ -57,18 +107,19 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                 session.FailPlan(actor, "цель вне досягаемости");
                 continue;
             }
-            if (action.Exclusive&&!session.Reservations.Claim(step.Target, actor, s.Clock.Tick))
+            if((action.Exclusive||action.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
             {
                 var other=session.Reservations.Entries.GetValueOrDefault(step.Target)?.Actor??0;
-                if (other!=0&&s.Clock.Tick-decision.LastFailureTick>120)session.Events.Publish(new SocialEvent(actor, other, "resource_conflict", .03f));
-                session.FailPlan(actor, "ресурс уже занят");
+                if(other!=0&&s.Clock.Tick-decision.LastFailureTick>120&&!action.EngagesTarget)
+                    session.Events.Publish(new SocialEvent(actor,other,"resource_conflict",.03f));
+                session.Replan(actor,action.EngagesTarget?"собеседник уже занят":"ресурс уже занят",6);
                 continue;
             }
             if (decision.RemainingMinutes<0)
             {
-                if (action.EngagesTarget&&!session.Interactions.Begin(actor, step.Target, step.Duration))
+                if(action.EngagesTarget&&!session.Interactions.Begin(actor,step.Target,step.Duration,step.Action))
                 {
-                    session.FailPlan(actor, "собеседник занят или отказался");
+                    session.Replan(actor,"собеседник занят или отказался",18);
                     continue;
                 }
                 decision.RemainingMinutes=Math.Max(1, step.Duration);
@@ -76,21 +127,29 @@ public sealed class ActionExecutionSystem : ISimulationSystem
             decision.RemainingMinutes-=1;
             if (decision.RemainingMinutes>0)continue;
             // Validate again immediately before committing effects: no delayed duplicate harvests or trades.
-            if (action.CanExecute(session, actor, step, out reason)&&action.Execute(session, actor, step))Complete(session, actor);
-            else session.FailPlan(actor, string.IsNullOrEmpty(reason)?"обстановка изменилась":reason);
+            if(action.CanExecute(session,actor,step,out reason)&&action.Execute(session,actor,step))Complete(session,actor);
+            else
+            {
+                var changed=string.IsNullOrEmpty(reason)?"обстановка изменилась":reason;
+                if(Transient(action,changed))session.Replan(actor,changed,12);
+                else session.FailPlan(actor,changed);
+            }
         }
         return count;
     }
+
+    private static bool Transient(ISimAction action,string reason)=>
+        action.EngagesTarget||reason is "предмет уже забрали" or "место больше не подходит" or
+        "источник тепла изменился" or "место больше не охлаждает" or "ресурс уже занят" or "стройка уже завершена";
     private static void Complete(SimulationSession session, int actor)
     {
         session.Interactions.End(actor);
         var decision=session.State.Entities.Get<DecisionComponent>(actor);
-        session.Events.Publish(new ActionCompletedEvent(actor, decision.Plan[0] with
-        {
-        }));
+        var completed=decision.Plan[0];
+        session.Events.Publish(new ActionCompletedEvent(actor,completed with { }));
         decision.Plan.RemoveAt(0);
         decision.RemainingMinutes=-1;
-        session.Reservations.Release(actor);
+        if(completed.Action!="move")session.Reservations.Release(actor);
         if (decision.Plan.Count==0)decision.NextDecision=session.State.Clock.Tick;
     }
 }

@@ -8,15 +8,26 @@ public sealed record Observation
     public string Definition { get; set; } = "";
     public string Product { get; set; } = "";
     public int Quantity { get; set; }
+    public int Spoiled { get; set; }
     public long SeenTick { get; set; }
     public float Confidence { get; set; } = 1;
     public long UnreachableUntil { get; set; }
     public int Owner { get; set; }
     public float Need { get; set; }
+    public float Thirst { get; set; }
+    public float Fatigue { get; set; }
+    public float Health { get; set; } = 100;
+    public float Temperature { get; set; }
+    public float Freshness { get; set; } = 1;
+    public float Durability { get; set; } = 100;
+    public float Quality { get; set; } = 1;
     public int Age { get; set; }
     public string Sex { get; set; } = "";
     public int Partner { get; set; }
     public bool Pregnant { get; set; }
+    public int Room { get; set; }
+    public bool Sheltered { get; set; }
+    public bool SocialAvailable { get; set; } = true;
     public float TrustBack { get; set; }
     public float AffectionBack { get; set; }
     public Dictionary<string, float> Skills { get; set; } = [];
