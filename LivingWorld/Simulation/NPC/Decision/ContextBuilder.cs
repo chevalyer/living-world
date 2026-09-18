@@ -32,6 +32,7 @@ public static class ContextBuilder
             Insulation=ClothingPhysics.Total(s, session.Definitions, actor),
             Sheltered=EnvironmentQueries.Sheltered(s, p),
             Room=s.Map[p].Room,
+            MapWidth=s.Map.Width,
             BuildSite=findBuildSite?BuildingService.FindVisibleSite(session, actor):null,
             SowSite=FindSowSite(session, actor),
             SocialReady=s.Clock.Tick-decision.LastSocialTick>120
@@ -58,12 +59,14 @@ public static class ContextBuilder
             if(session.Spatial.Query(p,0).Any(id=>e.Has<PlantComponent>(id)&&e.Get<PositionComponent>(id).Tile==p))continue;
             candidates.Add(p);
         }
-        return candidates
+        foreach(var candidate in candidates
             .OrderByDescending(p=>s.Map[p].Fertility)
             .ThenBy(p=>p.Distance(center))
             .ThenBy(p=>p.Y)
-            .ThenBy(p=>p.X)
-            .Select(p=>(GridPoint?)p)
-            .FirstOrDefault();
+            .ThenBy(p=>p.X))
+        {
+            if(center.Distance(candidate)<=1||session.Pathfinder.Find(center,candidate,1,256) is not null)return candidate;
+        }
+        return null;
     }
 }

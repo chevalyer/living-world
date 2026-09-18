@@ -51,7 +51,7 @@ public sealed class FamilySystem : ISimulationSystem
                 {
                     Kind="npc",Entity=child,Position=p,Need=needs.Hunger,Thirst=needs.Thirst,Fatigue=needs.Fatigue,
                     Health=e.Get<HealthComponent>(child).Value,Age=0,Sex=e.Get<IdentityComponent>(child).Sex,
-                    Partner=0,Pregnant=false,Room=s.Map[p].Room,Sheltered=EnvironmentQueries.Sheltered(s,p),SeenTick=s.Clock.Tick
+                    Partner=0,Pregnant=false,Room=s.Map[p].Room,Sheltered=EnvironmentQueries.Sheltered(s,p),SocialAvailable=true,SeenTick=s.Clock.Tick
                 });
             }
             s.Log($"Родился ребенок: {e.Get<IdentityComponent>(child).FullName}.");

@@ -23,6 +23,7 @@ public sealed class PlanningContext
     public float Insulation { get; init; }
     public bool Sheltered { get; init; }
     public int Room { get; init; }
+    public int MapWidth { get; init; }
     public GridPoint? BuildSite { get; init; }
     public GridPoint? SowSite { get; init; }
     public bool SocialReady { get; init; }

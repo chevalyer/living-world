@@ -23,6 +23,7 @@ public sealed record Observation
     public bool Pregnant { get; set; }
     public int Room { get; set; }
     public bool Sheltered { get; set; }
+    public bool SocialAvailable { get; set; } = true;
     public float TrustBack { get; set; }
     public float AffectionBack { get; set; }
     public Dictionary<string, float> Skills { get; set; } = [];

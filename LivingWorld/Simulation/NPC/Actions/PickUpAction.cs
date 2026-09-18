@@ -29,6 +29,24 @@ public sealed class PickUpAction : SimAction
         foreach (var tool in d.Tools)op.Effects.Add(new("tool:"+tool.Key, 1, true));
         if(d.Calories>0)op.Effects.Add(new("food.reserve",(int)MathF.Max(1,d.Calories)));
     }
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
+    {
+        reason="предмет уже забрали";
+        var e=s.State.Entities;
+        if(e.Try<ItemComponent>(step.Target) is { Holder:0 } direct&&e.Try<PositionComponent>(step.Target) is { } directPosition)
+        {
+            var owner=e.Get<OwnershipComponent>(step.Target).Owner;
+            return directPosition.Tile.Distance(e.Get<PositionComponent>(actor).Tile)<=1&&(owner==0||owner==actor)&&s.Inventory.CanCarry(actor,direct.Definition);
+        }
+        return s.Spatial.Query(step.Position,1).Any(id=>
+        {
+            var item=e.Try<ItemComponent>(id);
+            var position=e.Try<PositionComponent>(id);
+            if(item is null||item.Holder!=0||position?.Tile!=step.Position||item.Definition!=step.Argument)return false;
+            var owner=e.Get<OwnershipComponent>(id).Owner;
+            return (owner==0||owner==actor)&&s.Inventory.CanCarry(actor,item.Definition);
+        });
+    }
     public override bool Execute(SimulationSession s, int actor, ActionStep step)
     {
         if (s.State.Entities.Has<ItemComponent>(step.Target))return s.Inventory.PickUp(actor, step.Target);

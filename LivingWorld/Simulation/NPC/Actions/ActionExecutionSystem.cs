@@ -96,9 +96,11 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                     continue;
                 }
             }
-            if (!action.CanExecute(session, actor, step, out var reason))
+            if(!action.CanExecute(session,actor,step,out var reason))
             {
-                session.FailPlan(actor, reason);
+                if(action.EngagesTarget||reason is "предмет уже забрали" or "место больше не подходит")
+                    session.Replan(actor,reason,12);
+                else session.FailPlan(actor,reason);
                 continue;
             }
             if (e.Get<PositionComponent>(actor).Tile.Distance(step.Position)>step.Range)
@@ -106,18 +108,19 @@ public sealed class ActionExecutionSystem : ISimulationSystem
                 session.FailPlan(actor, "цель вне досягаемости");
                 continue;
             }
-            if ((action.Exclusive||action.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
+            if((action.Exclusive||action.EngagesTarget)&&!session.Reservations.Claim(step.Target,actor,s.Clock.Tick))
             {
                 var other=session.Reservations.Entries.GetValueOrDefault(step.Target)?.Actor??0;
-                if (other!=0&&s.Clock.Tick-decision.LastFailureTick>120)session.Events.Publish(new SocialEvent(actor, other, "resource_conflict", .03f));
-                session.FailPlan(actor, "ресурс уже занят");
+                if(other!=0&&s.Clock.Tick-decision.LastFailureTick>120&&!action.EngagesTarget)
+                    session.Events.Publish(new SocialEvent(actor,other,"resource_conflict",.03f));
+                session.Replan(actor,action.EngagesTarget?"собеседник уже занят":"ресурс уже занят",6);
                 continue;
             }
             if (decision.RemainingMinutes<0)
             {
-                if (action.EngagesTarget&&!session.Interactions.Begin(actor,step.Target,step.Duration,step.Action))
+                if(action.EngagesTarget&&!session.Interactions.Begin(actor,step.Target,step.Duration,step.Action))
                 {
-                    session.FailPlan(actor, "собеседник занят или отказался");
+                    session.Replan(actor,"собеседник занят или отказался",18);
                     continue;
                 }
                 decision.RemainingMinutes=Math.Max(1, step.Duration);

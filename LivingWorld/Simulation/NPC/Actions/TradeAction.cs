@@ -10,7 +10,7 @@ public sealed class TradeAction : SimAction
     {
         if(!c.SocialReady)yield break;
         var usable=c.Inventory.Where(x=>c.Definitions.Items[x.Item.Definition].Calories<=0||x.Item.Freshness>=.1f);
-        foreach(var other in c.OfKind("npc").Where(o=>o.Age>=18&&o.Need<=.9f&&o.Thirst<=.9f).Take(4))
+        foreach(var other in c.OfKind("npc").Where(o=>o.Age>=18&&o.SocialAvailable).Take(4))
         foreach(var offer in usable.GroupBy(x=>x.Item.Definition).Where(g=>g.Count()>1).Take(4))
         foreach(var wanted in other.Items.Where(x=>c.Definitions.Items[x.Key].Calories>100&&x.Value>1).Take(2))
         {

@@ -87,7 +87,8 @@ public sealed class DecisionSystem : ISimulationSystem
         {
             var p=center+new GridPoint(random.Range(-radius,radius+1),random.Range(-radius,radius+1));
             // Exploration picks a visible frontier, never a hidden resource destination.
-            if (s.Map.Walkable(p)&&PerceptionSystem.LineOfSight(s.Map, center, p))candidates.Add(p);
+            if(s.Map.Walkable(p)&&PerceptionSystem.LineOfSight(s.Map,center,p)&&
+                (center.Distance(p)<=1||session.Pathfinder.Find(center,p,0,256) is not null))candidates.Add(p);
         }
         var destination=candidates.OrderBy(p=>memory.Visited.Count(old=>old.Distance(p)<5)).ThenByDescending(p=>p.Distance(center)).FirstOrDefault(center);
         if (destination!=center&&ActionRules.CanMove(s, actor))decision.Plan=[new()

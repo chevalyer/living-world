@@ -4,12 +4,14 @@ public sealed class SowAction : SimAction
     public override string Id=>"sow";
     public override string Label=>"сеет";
     public override bool RequiresWork=>true;
+    public override bool Exclusive=>true;
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if(!c.Knowledge.Facts.Contains("farming")||c.SowSite is not { } site)yield break;
         foreach(var plant in c.Definitions.Plants.Values.Where(x=>x.Kind=="crop"&&c.OutdoorAir>=x.MinTemperature))
         {
-            var op=Option(site,argument:plant.Id,duration:20);
+            var reservation=-(site.Y*c.MapWidth+site.X+1);
+            var op=Option(site,reservation,plant.Id,20);
             op.Requires=[new(Item(plant.Product),1)];
             op.Effects=[new(Item(plant.Product),-1),new("sown",1,true)];
             yield return op;

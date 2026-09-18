@@ -116,6 +116,11 @@ public sealed class PerceptionSystem : ISimulationSystem
                 o.Pregnant=e.Get<FamilyComponent>(id).PregnancyDueTick.HasValue;
                 o.Room=s.Map[pos.Tile].Room;
                 o.Sheltered=EnvironmentQueries.Sheltered(s,pos.Tile);
+                var targetDecision=e.Get<DecisionComponent>(id);
+                var targetInteraction=e.Try<InteractionComponent>(id);
+                var sleeping=targetDecision.Plan.FirstOrDefault()?.Action=="sleep"&&targetDecision.RemainingMinutes>0;
+                o.SocialAvailable=needs.Hunger<=.9f&&needs.Thirst<=.9f&&!sleeping&&
+                    !(targetInteraction is not null&&targetInteraction.Until>s.Clock.Tick);
                 var back=e.Get<RelationshipComponent>(id).People.GetValueOrDefault(actor);
                 o.TrustBack=back?.Trust??.3f;
                 o.AffectionBack=back?.Affection??.3f;

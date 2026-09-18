@@ -8,7 +8,7 @@ public sealed class PartnerAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if(c.Family.Partner!=0||!c.SocialReady)yield break;
-        foreach(var other in c.OfKind("npc").Where(o=>o.Age>=18&&o.Partner==0&&o.Need<=.9f&&o.Thirst<=.9f&&o.TrustBack>.55f&&o.AffectionBack>.5f))
+        foreach(var other in c.OfKind("npc").Where(o=>o.Age>=18&&o.Partner==0&&o.SocialAvailable&&o.TrustBack>.55f&&o.AffectionBack>.5f))
         {
             var r=c.Relationships.People.GetValueOrDefault(other.Entity);
             if(r is null||r.Trust<=.55f||r.Affection<=.5f)continue;

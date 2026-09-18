@@ -8,7 +8,7 @@ public sealed class TeachAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if(!c.SocialReady)yield break;
-        foreach(var person in c.OfKind("npc").Where(o=>o.Age>=3&&o.Need<=.9f&&o.Thirst<=.9f))
+        foreach(var person in c.OfKind("npc").Where(o=>o.Age>=3&&o.SocialAvailable))
         foreach(var skill in c.Skills.Experience.Where(x=>x.Value>person.Skills.GetValueOrDefault(x.Key)+15).Take(2))
         {
             var op=Option(person.Position,person.Entity,skill.Key,30);

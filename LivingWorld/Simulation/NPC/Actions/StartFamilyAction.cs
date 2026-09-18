@@ -10,7 +10,7 @@ public sealed class StartFamilyAction : SimAction
     {
         if(c.Family.Partner==0||c.Family.PregnancyDueTick.HasValue||c.Needs.Hunger>.4f||c.Needs.Thirst>.4f||c.Needs.Fatigue>.7f||!c.Sheltered||c.Room==0)yield break;
         var partner=c.OfKind("npc").FirstOrDefault(o=>o.Entity==c.Family.Partner&&o.Age>=18);
-        if(partner is null||partner.Pregnant||!partner.Sheltered||partner.Room!=c.Room||
+        if(partner is null||!partner.SocialAvailable||partner.Pregnant||!partner.Sheltered||partner.Room!=c.Room||
            partner.Need>.45f||partner.Thirst>.45f||partner.Fatigue>.7f||partner.Health<65)yield break;
         var relationship=c.Relationships.People.GetValueOrDefault(partner.Entity);
         if(relationship is null||relationship.Trust<.6f||relationship.Affection<.55f||relationship.Irritation>.2f)yield break;
