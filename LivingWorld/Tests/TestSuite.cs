@@ -200,6 +200,20 @@ public static class TestSuite
         {
             var(s, id)=Fixture(); var storage=StorageService.Create(s, new(5, 5), 0); var item=Give(s, id, "grain"); Assert(StorageService.Deposit(s, id, storage, item), "deposit failed"); Equal(storage, s.State.Entities.Get<ItemComponent>(item).Holder); Equal(0, s.State.Entities.Get<OwnershipComponent>(item).Owner); Assert(StorageService.Take(s, id, storage, "grain"), "take failed"); Equal(id, s.State.Entities.Get<ItemComponent>(item).Holder);
         });
+        Test("settlement names always come from phonetic C V generation", ()=>
+        {
+            for(var seed=1;seed<=20;seed++)
+            {
+                var(s,id)=Fixture();
+                s.State.Seed=seed;
+                var home=FinishedProject(s,new(4,4));
+                s.State.Entities.Get<FamilyComponent>(id).HomeProject=home;
+                var actual=SettlementAnalyzer.DescribeAll(s).Single().Name;
+                var expected=new NameGenerator(D.Names).GenerateWord(
+                    new DeterministicRandom(RandomService.Hash(seed,$"settlement:{home}:0")),2,4);
+                Equal(expected,actual);
+            }
+        });
         Test("settlement analyzer groups nearby homes deterministically", ()=>
         {
             var(s, first)=Fixture();

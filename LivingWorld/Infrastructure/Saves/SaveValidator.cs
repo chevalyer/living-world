@@ -23,6 +23,16 @@ public static class SaveValidator
         }
         foreach (var (_, plant) in e.Store<PlantComponent>().All)
             if (!definitions.Plants.ContainsKey(plant.Definition)) throw new InvalidDataException("Unknown plant definition.");
+        foreach(var (id,facility) in e.Store<FacilityComponent>().All)
+        {
+            if(!definitions.Facilities.ContainsKey(facility.Definition))throw new InvalidDataException("Unknown facility definition.");
+            if(!e.Has<PositionComponent>(id))throw new InvalidDataException("Facility has no position.");
+            if(facility.Project!=0&&e.Try<ConstructionComponent>(facility.Project) is null)
+                throw new InvalidDataException("Facility references missing home project.");
+        }
+        foreach(var (_,storage) in e.Store<StorageComponent>().All)
+            if(storage.Project!=0&&e.Try<ConstructionComponent>(storage.Project) is null)
+                throw new InvalidDataException("Storage references missing home project.");
         foreach (var (_, equipment) in e.Store<EquipmentComponent>().All)
             foreach (var item in equipment.Items)
                 if (!e.Has<ItemComponent>(item)) throw new InvalidDataException("Missing equipped item.");
