@@ -4,6 +4,7 @@
     <ProjectReference Include="../Infrastructure/LivingWorld.Infrastructure.csproj" />
     <Content Include="../Definitions/Data/**/*.json" Link="Data/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../Presentation/Runtime/SimulationRunner.cs" Link="Runtime/SimulationRunner.cs" />
+    <Compile Include="../Presentation/Runtime/WorldCreationInput.cs" Link="Runtime/WorldCreationInput.cs" />
     <Compile Include="../Presentation/Rendering/RenderSnapshot.cs" Link="Runtime/RenderSnapshot.cs" />
   </ItemGroup>
 </Project>

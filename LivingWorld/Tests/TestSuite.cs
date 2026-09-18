@@ -17,9 +17,9 @@ public static class TestSuite
         });
         Test("new world population input uses typed text", ()=>
         {
-            Equal(99,LivingWorld.Presentation.SimulationHud.ParsePopulationInput("99",14));
-            Equal(500,LivingWorld.Presentation.SimulationHud.ParsePopulationInput("999",14));
-            Equal(14,LivingWorld.Presentation.SimulationHud.ParsePopulationInput("oops",14));
+            Equal(99,LivingWorld.Presentation.WorldCreationInput.Population("99",14));
+            Equal(500,LivingWorld.Presentation.WorldCreationInput.Population("999",14));
+            Equal(14,LivingWorld.Presentation.WorldCreationInput.Population("oops",14));
         });
         Test("reachability rejects disconnected remembered targets", ()=>
         {

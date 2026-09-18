@@ -300,14 +300,6 @@ public partial class SimulationHud : CanvasLayer
     public void ToggleInterface()=>_root.Visible=!_root.Visible;
     public void Status(string message)=>_status.Text=message;
 
-    public static int ParsePopulationInput(string text,int fallback)
-    {
-        var value=fallback;
-        if(int.TryParse(text.Trim(),NumberStyles.Integer,CultureInfo.InvariantCulture,out var parsed)||
-           int.TryParse(text.Trim(),NumberStyles.Integer,CultureInfo.CurrentCulture,out parsed))
-            value=parsed;
-        return Math.Clamp(value,1,500);
-    }
 
     public void WorldChanged()
     {
@@ -477,7 +469,7 @@ public partial class SimulationHud : CanvasLayer
                 Status("сид должен быть целым числом");
                 return;
             }
-            var people=ParsePopulationInput(_people.GetLineEdit().Text,(int)_people.Value);
+            var people=WorldCreationInput.Population(_people.GetLineEdit().Text,(int)_people.Value);
             _people.Value=people;
             _modal.Hide();
             _=Game.NewWorld(seed,_mapSize.GetSelectedId(),people);
