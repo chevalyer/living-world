@@ -36,7 +36,7 @@ public sealed class ChopAction : SimAction
             s.Spatial.Remove(step.Target);
         }
         var product=def.Product;
-        for (var i=0; i<units; i++)s.Inventory.Spawn(product, step.Position, actor);
+        for (var i=0; i<units; i++)s.Inventory.Spawn(product, step.Position);
         s.Inventory.WearTool(actor, "chop", 2);
         s.Events.Publish(new SkillUsedEvent(actor, "woodworking", 4));
         return true;

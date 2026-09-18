@@ -63,7 +63,7 @@ public static class ContextBuilder
             .ThenBy(p=>p.Distance(center))
             .ThenBy(p=>p.Y)
             .ThenBy(p=>p.X)
-            .Cast<GridPoint?>()
+            .Select(p=>(GridPoint?)p)
             .FirstOrDefault();
     }
 }

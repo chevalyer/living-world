@@ -32,7 +32,7 @@ public sealed class MineAction : SimAction
             s.State.Entities.Remove(step.Target);
             s.Spatial.Remove(step.Target);
         }
-        for (var i=0; i<units; i++)s.Inventory.Spawn(product, step.Position, actor);
+        for (var i=0; i<units; i++)s.Inventory.Spawn(product, step.Position);
         s.Inventory.WearTool(actor, "mine", 2);
         s.Events.Publish(new SkillUsedEvent(actor, "mining", 4));
         return true;
