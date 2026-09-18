@@ -294,7 +294,7 @@ public partial class SimulationHud : CanvasLayer
         _navigatorSignature="";
         _settlementAnchor=0;
         _tab="npc";
-        if (IsInstanceValid(_search))_search.Text="";
+        _search.Text="";
         RefreshTabs();
     }
 
