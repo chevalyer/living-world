@@ -8,9 +8,12 @@ public partial class GameRoot : Node2D
     public WorldView View { get; private set; } = null!;
     public CameraRig Camera { get; private set; } = null!;
     public SimulationHud Hud { get; private set; } = null!;
-    public int Selected { get; set; }
+    public int Selected { get; private set; }
+    public int SelectedSettlement { get; private set; }
+    public MapOverlay Overlay { get; private set; }
     public bool DebugView { get; set; }
     public bool Busy { get; private set; }
+
     private bool _paused = true, _closing;
     private int _speed = 1;
     private double _hudElapsed;
@@ -23,6 +26,7 @@ public partial class GameRoot : Node2D
         get => _paused;
         set { if (_paused == value) return; _paused = value; _ = ApplyControls(); }
     }
+
     public int Speed
     {
         get => _speed;
@@ -88,7 +92,7 @@ public partial class GameRoot : Node2D
             if (_closing) return;
             _paused = false;
             AcceptSnapshot();
-            Hud.Status("мир создан · выбери жителя кликом");
+            Hud.Status("мир создан · выбери жителя или используй поиск");
         }
         catch (Exception ex)
         {
@@ -105,9 +109,64 @@ public partial class GameRoot : Node2D
         if (_generation == snapshot.Generation) return;
         _generation = snapshot.Generation;
         Selected = snapshot.People.FirstOrDefault().Id;
+        SelectedSettlement = 0;
+        Overlay = MapOverlay.None;
         Hud.SelectedTile = null;
         Camera.Focus(snapshot.Start);
         View.ResetTerrain();
+        Hud.WorldChanged();
+        Hud.Refresh();
+    }
+
+    public void FocusPerson(int id)
+    {
+        if (Snapshot is not { } snapshot)return;
+        var person=snapshot.People.FirstOrDefault(x=>x.Id==id);
+        if (person.Id==0)return;
+        Selected=id;
+        SelectedSettlement=0;
+        Hud.SelectedTile=person.Tile;
+        Camera.Focus(person.Tile);
+        Hud.ShowNpc();
+        _runner?.SetView(new(Selected,Hud.SelectedTile,DebugView));
+        Hud.Refresh();
+    }
+
+    public void FocusSettlement(int anchor)
+    {
+        if (Snapshot is not { } snapshot)return;
+        var settlement=snapshot.Settlements.FirstOrDefault(x=>x.Anchor==anchor);
+        if (settlement is null)return;
+        Selected=0;
+        SelectedSettlement=anchor;
+        Hud.SelectedTile=settlement.Center;
+        SetOverlay(MapOverlay.Settlements);
+        Camera.FocusArea(settlement.MinX,settlement.MinY,settlement.MaxX,settlement.MaxY);
+        Hud.ShowSettlement(anchor);
+        _runner?.SetView(new(0,Hud.SelectedTile,DebugView));
+        Hud.Refresh();
+    }
+
+    public void SetOverlay(MapOverlay overlay)
+    {
+        Overlay=overlay;
+        View.QueueRedraw();
+        Hud.RefreshOverlayButtons();
+    }
+
+    private void CycleOverlay()
+    {
+        var values=Enum.GetValues<MapOverlay>();
+        SetOverlay(values[((int)Overlay+1)%values.Length]);
+    }
+
+    private void ClearSelection()
+    {
+        Selected=0;
+        SelectedSettlement=0;
+        Hud.SelectedTile=null;
+        Hud.ShowNpc();
+        _runner?.SetView(new(0,null,DebugView));
         Hud.Refresh();
     }
 
@@ -139,19 +198,25 @@ public partial class GameRoot : Node2D
                 case Key.Key3: Speed = 12; break;
                 case Key.Key4: Speed = 32; break;
                 case Key.F2: DebugView = !DebugView; break;
+                case Key.F3: CycleOverlay(); break;
                 case Key.F5: Save(); break;
                 case Key.F9: Load(); break;
+                case Key.F when key.CtrlPressed: Hud.FocusSearch(); break;
                 case Key.F: Camera.FitWorld(); break;
                 case Key.Home: if (Snapshot is { } world) Camera.Focus(world.Start); break;
-                case Key.Escape: Selected = 0; break;
+                case Key.Escape: ClearSelection(); break;
             }
         }
+
         if (@event is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left && Snapshot is { } snapshot)
         {
             var point = View.GetGlobalMousePosition() / WorldView.TileSize;
             var tile = new GridPoint((int)MathF.Floor(point.X), (int)MathF.Floor(point.Y));
-            Selected = snapshot.People.Where(p => p.Tile.Distance(tile) <= 2).OrderBy(p => p.Tile.Distance(tile)).Select(p => p.Id).FirstOrDefault();
+            Selected = snapshot.People.Where(p => p.Tile.Distance(tile) <= 2)
+                .OrderBy(p => p.Tile.Distance(tile)).Select(p => p.Id).FirstOrDefault();
+            SelectedSettlement=0;
             Hud.SelectedTile = snapshot.Contains(tile) ? tile : null;
+            if (Selected!=0)Hud.ShowNpc();
             _runner?.SetView(new(Selected, Hud.SelectedTile, DebugView));
             Hud.Refresh();
         }
@@ -159,6 +224,7 @@ public partial class GameRoot : Node2D
 
     public void Save() => _ = SaveOrLoad(load: false);
     public void Load() => _ = SaveOrLoad(load: true);
+
     private async Task SaveOrLoad(bool load)
     {
         if (Busy || _runner is null || _closing || (!load && Snapshot is null)) return;
@@ -175,11 +241,13 @@ public partial class GameRoot : Node2D
         catch (Exception ex) { if (!_closing) Report(load ? "Загрузка не удалась" : "Сохранение не удалось", ex); }
         finally { Busy = false; }
     }
+
     private void Report(string operation, Exception ex)
     {
         Hud.Status(operation + ": " + ex.Message);
         GD.PushError(ex.ToString());
     }
+
     public override void _ExitTree()
     {
         _closing = true;
