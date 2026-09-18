@@ -1,0 +1,13 @@
+{
+  "id": "boots",
+  "name": "кожаные сапоги",
+  "material": "leather",
+  "mass": 0.9,
+  "volume": 1.35,
+  "slots": [
+    "feet"
+  ],
+  "coverage": 0.13,
+  "thickness": 1.7,
+  "comfort": 0.8
+}

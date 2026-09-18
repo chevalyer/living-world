@@ -1,0 +1,11 @@
+{
+  "id": "log",
+  "name": "бревно",
+  "material": "wood",
+  "mass": 2.2,
+  "volume": 3,
+  "tags": [
+    "fuel",
+    "construction"
+  ]
+}

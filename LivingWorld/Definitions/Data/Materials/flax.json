@@ -1,0 +1,10 @@
+{
+  "id": "flax",
+  "name": "лен",
+  "density": 450,
+  "insulation": 0.55,
+  "waterResistance": 0.15,
+  "strength": 0.4,
+  "flammability": 0.8,
+  "flexibility": 0.9
+}

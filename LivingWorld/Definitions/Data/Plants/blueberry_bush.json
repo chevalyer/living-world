@@ -1,0 +1,14 @@
+{
+  "id": "blueberry_bush",
+  "name": "куст черники",
+  "kind": "bush",
+  "product": "blueberry",
+  "minTemperature": 3,
+  "growthDays": 30,
+  "regrowthDays": 3,
+  "lifespanDays": 4000,
+  "color": "#476b50",
+  "fruitColor": "#656baf",
+  "yield": 20,
+  "optimalTemperature": 12
+}

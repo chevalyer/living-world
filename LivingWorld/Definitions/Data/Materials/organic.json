@@ -1,0 +1,10 @@
+{
+  "id": "organic",
+  "name": "растительное вещество",
+  "density": 800,
+  "insulation": 0.1,
+  "waterResistance": 0.1,
+  "strength": 0.1,
+  "flammability": 0.6,
+  "flexibility": 1
+}

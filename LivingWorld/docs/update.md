@@ -1,45 +1,36 @@
-# точечное обновление существующего проекта
+# обновление 0.5.0-alpha — отдельные definition-файлы
 
-исходная структура и механики сохранены. изменён 31 существующий файл: 26 файлов кода, настроек и проверок, ещё 5 файлов документации и отчётов. 161 исходный файл остался побайтно прежним; исходные файлы не удалялись. добавлены 2 файла исполнения и 2 документа.
+это обновление меняет только способ хранения игровых определений. runtime-модель симуляции остается совместимой: системы по-прежнему работают через `DefinitionCatalog`.
 
-## результат
+## новая структура
 
-- имена и фамилии собираются из случайных букв по настраиваемым слоговым шаблонам; ребёнок наследует фамилию матери целиком. загрузка сохраняет уже записанные имена.
-- камера отсекает невидимые чанки и объекты. при отдалении используются более простые текстуры со статическими объектами; изменённые участки обновляются локально.
-- симуляция выполняется в собственном потоке независимо от камеры и кадров. 32× задаёт 768 обычных тиков в секунду — день за 1,875 секунды при достаточной производительности. интерфейс показывает фактическую скорость.
-- уменьшены повторные расчёты контекста и видимости. планировщик сохраняет порядок и стоимость поиска, но использует компактные состояния без постоянной сборки строк и копирования цепочек.
+- каждый предмет хранится в отдельном `Definitions/Data/Items/<id>.json`;
+- каждый материал — в `Definitions/Data/Materials/<id>.json`;
+- каждое растение — в `Definitions/Data/Plants/<id>.json`;
+- каждое здание — в `Definitions/Data/Buildings/<id>.json`;
+- правила имен перенесены в `Definitions/Data/Names/names.json`;
+- общий `recipes.json` удален;
+- рецепты теперь находятся внутри json предмета, который они создают.
 
-## изменённые файлы кода и проверок
+загрузчик рекурсивно сканирует папки, поэтому позже можно добавлять `Items/Tools`, `Items/Food`, `Buildings/Production` и другие подпапки без изменения кода.
 
-| назначение | файлы |
-| --- | --- |
-| генерация и наследование | `Simulation/NPC/NameGenerator.cs`, `Simulation/NPC/NpcFactory.cs`, `Simulation/NPC/Family/FamilySystem.cs` |
-| правила сочетания букв | `Definitions/NameDefinition.cs`, `Definitions/Data/names.json`, `Definitions/DefinitionCatalog.cs` |
-| совместимость сохранений | `Infrastructure/Saves/SaveService.cs` |
-| детализация и отсечение | `Presentation/Rendering/WorldView.cs`, `Presentation/Rendering/TerrainTexture.cs`, `Presentation/CameraRig.cs` |
-| локальные отметки изменений | `Simulation/World/WorldMap.cs`, `Simulation/Climate/WaterSystem.cs`, `Simulation/World/Navigation/MovementSystem.cs`, `Simulation/World/TrafficSystem.cs`, `Simulation/Buildings/BuildingService.cs`, `Simulation/NPC/Actions/BreakIceAction.cs` |
-| скорость и интерфейс | `Presentation/GameRoot.cs`, `Presentation/UI/SimulationHud.cs` |
-| повторные расчёты npc | `Simulation/NPC/Decision/DecisionSystem.cs`, `Simulation/NPC/Decision/ContextBuilder.cs`, `Simulation/NPC/Memory/PerceptionSystem.cs` |
-| проверки | `Tests/TestSuite.cs`, `scripts/check_sources.py` |
-| поиск цепочек действий | `Simulation/NPC/Decision/ForwardPlanner.cs` |
-| оптимизация ядра при запуске из редактора | `Simulation/LivingWorld.Simulation.csproj` |
-| подключение рабочего потока и снимков к тестам | `Tests/LivingWorld.Tests.csproj` |
+## рецепты
 
-последние три файла потребовались дополнительно к исходному списку: измерения выявили высокую стоимость планировщика, неоптимизированная сборка ядра сдерживала скорость в редакторе, а новые классы требовалось проверять независимо от godot.
+встроенный рецепт не содержит `output`: результат определяется файлом предмета. при загрузке `DefinitionLoader` создает обычные `RecipeDefinition` и добавляет их в `DefinitionCatalog.Recipes`, поэтому `CraftAction`, planner и остальные системы не требуют отдельной логики.
 
-## новые файлы исполнения
+## совместимость
 
-| файл | назначение |
-| --- | --- |
-| `Presentation/Runtime/SimulationRunner.cs` | единственный владелец сессии, поток тиков, очередь команд, пауза и замер скорости |
-| `Presentation/Rendering/RenderSnapshot.cs` | неизменяемые копии данных для графики и интерфейса, повторное использование чанков |
+семантические `ItemDefinition` и `RecipeDefinition` в runtime не изменены. fingerprint по-прежнему строится по тем же runtime-определениям, поэтому перенос файлов сам по себе не должен делать существующие сохранения несовместимыми.
 
-## документация
+## затронутый код
 
-обновлены `README.md`, `docs/architecture.md`, `docs/scope.md`, `docs/validation.md` и `docs/source-check-report.json`. добавлены этот документ и `docs/validation-results.json` с фактическими результатами запусков.
+- `Infrastructure/DefinitionLoader.cs` — рекурсивная загрузка отдельных файлов и извлечение встроенных рецептов;
+- `Presentation/GameRoot.cs` — перечисление definition-файлов внутри `res://`;
+- `Headless/LivingWorld.Headless.csproj` и `Tests/LivingWorld.Tests.csproj` — рекурсивное копирование data-файлов;
+- `Tests/TestSuite.cs` — проверки измененных/additive definitions через новую файловую структуру;
+- `scripts/check_sources.py` — структурная проверка отдельных json-файлов;
+- `docs/extending.md` — новая инструкция по расширению данных.
 
-## применение
+версия проекта установлена в `0.5.0-alpha` через `application/config/version`.
 
-архив содержит обновлённую версию текущего проекта. закрой запущенную игру и редактор, распакуй файлы поверх папки проекта с заменой, затем открой `project.godot` и нажми build. для ручного переноса нужны все файлы из таблиц, включая два новых класса.
-
-старые сохранения остаются в стандартной папке данных приложения. новые правила имён не переименовывают существующих жителей и не отменяют проверку совместимости материалов, предметов и остальных игровых определений. результаты проверок и ограничения измерений — в [validation.md](validation.md).
+`main` этим обновлением не изменяется: работа ведется в отдельной ветке.

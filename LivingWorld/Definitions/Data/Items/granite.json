@@ -1,0 +1,10 @@
+{
+  "id": "granite",
+  "name": "камень",
+  "material": "stone",
+  "mass": 1.4,
+  "volume": 2.0999999999999996,
+  "tags": [
+    "construction"
+  ]
+}

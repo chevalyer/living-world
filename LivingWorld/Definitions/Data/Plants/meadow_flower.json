@@ -1,0 +1,13 @@
+{
+  "id": "meadow_flower",
+  "name": "луговые цветы",
+  "kind": "flower",
+  "product": "fiber",
+  "minTemperature": 5,
+  "growthDays": 18,
+  "regrowthDays": 12,
+  "lifespanDays": 380,
+  "color": "#839765",
+  "fruitColor": "#e9d9a8",
+  "yield": 2
+}

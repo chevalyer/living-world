@@ -1,0 +1,27 @@
+{
+  "id": "wool_coat",
+  "name": "шерстяной плащ",
+  "material": "wool",
+  "mass": 2,
+  "volume": 3,
+  "slots": [
+    "outer_torso",
+    "arms"
+  ],
+  "coverage": 0.6,
+  "thickness": 2.1,
+  "comfort": 0.85,
+  "recipes": [
+    {
+      "id": "wool_coat",
+      "name": "сшить плащ",
+      "operation": "sew",
+      "inputs": {
+        "wool": 3
+      },
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 90
+    }
+  ]
+}

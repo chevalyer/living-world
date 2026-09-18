@@ -1,0 +1,10 @@
+{
+  "id": "iron_ore",
+  "name": "железная руда",
+  "material": "stone",
+  "mass": 2,
+  "volume": 3,
+  "tags": [
+    "ore"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "leather",
+  "name": "выделанная кожа",
+  "material": "leather",
+  "mass": 0.6,
+  "volume": 0.8999999999999999,
+  "tags": [
+    "fabric"
+  ]
+}

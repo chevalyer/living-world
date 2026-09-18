@@ -1,0 +1,27 @@
+{
+  "id": "stone_axe",
+  "name": "каменный топор",
+  "material": "stone",
+  "mass": 1.7,
+  "volume": 2.55,
+  "tools": {
+    "chop": 0.7
+  },
+  "durability": 90,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "stone_axe",
+      "name": "собрать топор",
+      "inputs": {
+        "log": 1,
+        "granite": 1
+      },
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 35
+    }
+  ]
+}

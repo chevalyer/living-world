@@ -1,0 +1,13 @@
+{
+  "id": "raspberry_bush",
+  "name": "куст малины",
+  "kind": "bush",
+  "product": "raspberry",
+  "minTemperature": 6,
+  "growthDays": 25,
+  "regrowthDays": 3,
+  "lifespanDays": 3650,
+  "color": "#587847",
+  "fruitColor": "#ce596e",
+  "yield": 22
+}

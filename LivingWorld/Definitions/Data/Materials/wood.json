@@ -1,0 +1,10 @@
+{
+  "id": "wood",
+  "name": "древесина",
+  "density": 650,
+  "insulation": 0.5,
+  "waterResistance": 0.2,
+  "strength": 0.6,
+  "flammability": 0.9,
+  "flexibility": 0.2
+}

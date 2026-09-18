@@ -1,0 +1,10 @@
+{
+  "id": "wool",
+  "name": "шерсть",
+  "density": 300,
+  "insulation": 1.6,
+  "waterResistance": 0.3,
+  "strength": 0.4,
+  "flammability": 0.4,
+  "flexibility": 1
+}
