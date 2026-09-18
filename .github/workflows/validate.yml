@@ -48,6 +48,27 @@ jobs:
       - name: seven day stability run
         run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 128 --npcs 14 --ticks 10080 --json artifacts/week.json
 
+      - name: thirty day multi-seed behavior soak
+        run: |
+          for seed in 7 1847 9001; do
+            dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
+              --seed "$seed" --size 96 --npcs 14 --ticks 43200 --json "artifacts/behavior-$seed.json"
+          done
+
+      - name: inspect behavior soak
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          files=sorted(Path("artifacts").glob("behavior-*.json"))
+          assert len(files)==3, "missing behavior soak output"
+          for path in files:
+              data=json.loads(path.read_text())
+              assert data["simulation_tick"]==43200, f"{path}: incomplete simulation"
+              assert data["population"]>0, f"{path}: population collapsed"
+              print(path.name, "population", data["population"], "failures", data["action_failures"], "deaths", data["deaths"])
+          PY
+
       - name: install godot 4.7.1 .net
         run: |
           curl -L --fail --retry 3 \
