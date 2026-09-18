@@ -12,7 +12,7 @@ public sealed class WarmUpAction : SimAction
             yield return op;
         }
         var home=c.Family.HomeProject==0?null:c.Known.FirstOrDefault(o=>o.Kind=="project"&&o.Entity==c.Family.HomeProject);
-        foreach(var o in c.OfKind("shelter").Take(4))
+        foreach(var o in c.OfKind("shelter").Where(o=>o.Temperature>=10||o.Temperature>c.OutdoorAir+.5f).Take(4))
         {
             var op=Option(o.Position,duration:45,range:0);
             op.Effects=[new("warm",1,true),new("sheltered",1,true)];

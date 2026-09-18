@@ -173,7 +173,7 @@ public sealed class PerceptionSystem : ISimulationSystem
                 }
             }
             if(tile.Room>0&&tile.Roof>0&&roomsSeen.Add(tile.Room))
-                Add(new Observation { Kind="shelter",Position=p,Quantity=1,Entity=tile.Room });
+                Add(new Observation { Kind="shelter",Position=p,Quantity=1,Entity=tile.Room,Temperature=EnvironmentQueries.Local(s,p) });
         }
         memory.Visited.Add(center);
         if (memory.Visited.Count>128)memory.Visited.RemoveAt(0);

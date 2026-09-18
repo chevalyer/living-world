@@ -26,7 +26,7 @@ public static class ContextBuilder
             Family=e.Get<FamilyComponent>(actor),
             Relationships=e.Get<RelationshipComponent>(actor),
             Skills=e.Get<SkillsComponent>(actor),
-            Air=EnvironmentQueries.Local(s, p),
+            Air=EnvironmentQueries.Local(s,p)+EnvironmentQueries.FireHeat(session,p),
             OutdoorAir=EnvironmentQueries.Air(s, p),
             Temperature=e.Get<ThermalComponent>(actor).Temperature,
             Insulation=ClothingPhysics.Total(s, session.Definitions, actor),

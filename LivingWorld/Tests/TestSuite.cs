@@ -418,6 +418,16 @@ public static class TestSuite
             s.State.Entities.Get<ItemComponent>(pick).Durability=10;
             Equal(5,ContextBuilder.Create(s,id).InitialState().Get("tool:mine"));
         });
+        Test("planning temperature includes nearby fire heat", ()=>
+        {
+            var(s,id)=Fixture();
+            var fire=s.State.Entities.Create();
+            s.State.Entities.Set(fire,new PositionComponent { Tile=new(5,5) });
+            s.State.Entities.Set(fire,new FireComponent { FuelMinutes=200,Heat=20 });
+            s.Spatial.Add(fire,new(5,5));
+            var context=ContextBuilder.Create(s,id,false);
+            Assert(context.Air>context.OutdoorAir,"planner ignored fire heat");
+        });
         Test("planner can compose fire before a heated recipe", ()=>
         {
             var(s,id)=Fixture();
