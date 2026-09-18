@@ -52,6 +52,7 @@ materials_list = load_group("Materials")
 items_list = load_group("Items")
 plants_list = load_group("Plants")
 buildings_list = load_group("Buildings")
+facilities_list = load_group("Facilities")
 name_files = sorted((DATA / "Names").rglob("*.json"))
 check(len(name_files) == 1, "Names must contain exactly one json file")
 names = json.loads(name_files[0].read_text(encoding="utf-8")) if name_files else {}
@@ -70,6 +71,7 @@ data = {
     "plants": plants_list,
     "recipes": recipes_list,
     "buildings": buildings_list,
+    "facilities": facilities_list,
     "names": names,
 }
 
@@ -81,6 +83,24 @@ check(not set(names["vowels"]).intersection(names["consonants"]), "name alphabet
 check(bool(names["patterns"]) and all(1 <= len(p) <= 4 and "V" in p and set(p) <= {"C", "V"} for p in names["patterns"]), "invalid syllable patterns")
 for part in ("first", "last"):
     check(1 <= names[part+"MinSyllables"] <= names[part+"MaxSyllables"] <= 6, "invalid syllable count")
+
+item_ids={x.get("id") for x in items_list}
+facility_caps=set()
+for facility in facilities_list:
+    check(facility.get("placement","indoor") in {"indoor","outdoor"}, "invalid facility placement: "+facility.get("id","<unknown>"))
+    check(facility.get("access","household") in {"household","community"}, "invalid facility access: "+facility.get("id","<unknown>"))
+    check(float(facility.get("workMinutes",30))>0, "invalid facility work time: "+facility.get("id","<unknown>"))
+    check(0 <= float(facility.get("minMoisture",0)) <= 1, "invalid facility moisture: "+facility.get("id","<unknown>"))
+    inputs=facility.get("inputs",{})
+    check(bool(inputs), "facility has no inputs: "+facility.get("id","<unknown>"))
+    check(all(item in item_ids and isinstance(count,int) and count>0 for item,count in inputs.items()), "invalid facility inputs: "+facility.get("id","<unknown>"))
+    caps=facility.get("capabilities",[])
+    check(bool(caps) and len(caps)==len(set(caps)), "invalid facility capabilities: "+facility.get("id","<unknown>"))
+    facility_caps.update(caps)
+
+for recipe in recipes_list:
+    capability=recipe.get("capability","")
+    check(not capability or capability in facility_caps, "recipe capability has no facility: "+recipe.get("id","<unknown>"))
 
 component_ids = []
 actions = []
