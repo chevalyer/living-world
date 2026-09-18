@@ -49,6 +49,7 @@ jobs:
         run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 128 --npcs 14 --ticks 10080 --json artifacts/week.json
 
       - name: thirty day multi-seed behavior soak
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
         run: |
           for seed in 7 1847 9001; do
             dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
@@ -56,6 +57,7 @@ jobs:
           done
 
       - name: inspect behavior soak
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
         run: |
           python3 - <<'PY'
           import json
@@ -70,11 +72,13 @@ jobs:
           PY
 
       - name: 320 day lifecycle soak
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
         run: |
           dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
             --seed 1847 --size 64 --npcs 14 --ticks 460800 --json artifacts/lifecycle.json
 
       - name: inspect lifecycle
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
         run: |
           python3 - <<'PY'
           import json
