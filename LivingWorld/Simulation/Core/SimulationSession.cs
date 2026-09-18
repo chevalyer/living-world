@@ -1,0 +1,113 @@
+namespace LivingWorld.Simulation;
+public sealed class SimulationSession
+{
+    public WorldState State
+    { get; }
+    public DefinitionCatalog Definitions
+    { get; }
+    public EventBus Events
+    { get; } = new();
+    public SpatialIndex Spatial
+    { get; }
+    public Pathfinder Pathfinder
+    { get; }
+    public InventoryService Inventory
+    { get; }
+    public InteractionService Interactions
+    { get; }
+    public ReservationService Reservations
+    { get; } = new();
+    public ActionRegistry Actions
+    { get; } = new();
+    public ForwardPlanner Planner
+    { get; } = new();
+    public List<ISituationEvaluator> Evaluators
+    { get; } = [new PhysiologyEvaluator(), new SocialEvaluator(), new ResourceEvaluator()];
+    public List<ISimulationSystem> Systems
+    { get; } = [];
+    public Dictionary<string, SystemProfile> Profiles
+    { get; } = new(StringComparer.Ordinal);
+    public bool RoomsDirty { get; set; } = true;
+    public int PathsThisTick { get; set; }
+    public int MaxPathsPerTick { get; set; } = 6;
+    public int MaxDecisionsPerTick { get; set; } = 12;
+    public double LastTickMilliseconds
+    { get; private set; }
+    public SimulationSession(WorldState state, DefinitionCatalog definitions)
+    {
+        State=state;
+        Definitions=definitions;
+        Interactions=new(state);
+        Spatial=new(state.Map);
+        Spatial.Rebuild(state.Entities);
+        Pathfinder=new(state.Map);
+        Inventory=new(state, definitions, Spatial, Events);
+        ISimAction[] actions=[new MoveAction(), new ObserveAction(), new HarvestAction(), new PickUpAction(), new EatAction(), new DrinkAction(), new BreakIceAction(), new SleepAction(), new WearAction(), new RemoveClothingAction(), new ChopAction(), new MineAction(), new CraftAction(), new LightFireAction(), new WarmUpAction(), new RefuelAction(), new PlanBuildingAction(), new BuildAction(), new RepairAction(), new DropAction(), new SowAction(), new TalkAction(), new GiveAction(), new TradeAction(), new TeachAction(), new PartnerAction(), new StartFamilyAction(), new CareAction(), new PlayAction(), new TakeAction(), new DepositAction(), new DiscardSpoiledAction()];
+        foreach (var action in actions)Actions.Add(action);
+        _=new SkillSystem(this);
+        _=new RelationshipSystem(this);
+        _=new ObservationLearningSystem(this);
+        // Fixed, explicit order. Simulation correctness never depends on Godot node order or wall-clock budgets.
+        Systems.AddRange([new WeatherSystem(), new WaterSystem(), new RoomSystem(), new RoomTemperatureSystem(), new FireSystem(), new PlantSystem(), new ItemConditionSystem(), new NeedsSystem(), new TemperatureSystem(), new PerceptionSystem(), new DecisionSystem(), new ActionExecutionSystem(), new MovementSystem(), new FamilySystem(), new LifeSystem(), new TrafficSystem()]);
+        foreach (var system in Systems)Profiles[system.Name]=new()
+        {
+            Name=system.Name
+        };
+    }
+    public void Step(int ticks=1)
+    {
+        if (ticks<0)throw new ArgumentOutOfRangeException(nameof(ticks));
+        for (var i=0; i<ticks; i++)
+        {
+            var started=System.Diagnostics.Stopwatch.GetTimestamp();
+            State.Clock.Advance();
+            PathsThisTick=0;
+            Reservations.Expire(State.Clock.Tick);
+            foreach (var system in Systems)
+            {
+                if (State.Clock.Tick%system.Interval!=0)continue;
+                var before=System.Diagnostics.Stopwatch.GetTimestamp();
+                var entities=system.Update(this);
+                var elapsed=System.Diagnostics.Stopwatch.GetElapsedTime(before).TotalMilliseconds;
+                if (!Profiles.TryGetValue(system.Name, out var profile))Profiles[system.Name]=profile=new()
+                {
+                    Name=system.Name
+                };
+                profile.LastMilliseconds=elapsed;
+                profile.MaxMilliseconds=Math.Max(profile.MaxMilliseconds, elapsed);
+                profile.Calls++;
+                profile.AverageMilliseconds+=(elapsed-profile.AverageMilliseconds)/profile.Calls;
+                profile.Entities=entities;
+            }
+            Events.Flush();
+            LastTickMilliseconds=System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        }
+    }
+    public void CancelPlan(int actor)
+    {
+        Interactions.End(actor);
+        var decision=State.Entities.Get<DecisionComponent>(actor);
+        decision.Plan.Clear();
+        decision.RemainingMinutes=-1;
+        var movement=State.Entities.Get<MovementComponent>(actor);
+        movement.Path.Clear();
+        movement.Destination=null;
+        movement.Progress=0;
+        Reservations.Release(actor);
+    }
+    public void FailPlan(int actor, string reason)
+    {
+        var decision=State.Entities.Get<DecisionComponent>(actor);
+        var step=decision.Plan.FirstOrDefault();
+        if (step is not null)
+        {
+            foreach (var memory in State.Entities.Get<MemoryComponent>(actor).Observations.Where(o=>o.Entity==step.Target&&step.Target!=0||o.Position==step.Position))memory.UnreachableUntil=State.Clock.Tick+90;
+            Events.Publish(new ActionFailedEvent(actor, step.Action, reason));
+        }
+        CancelPlan(actor);
+        decision.LastFailure=reason;
+        decision.LastFailureTick=State.Clock.Tick;
+        decision.Failures++;
+        decision.NextDecision=State.Clock.Tick+6;
+    }
+}

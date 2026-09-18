@@ -1,0 +1,20 @@
+[
+  {
+    "id": "wooden_cabin",
+    "name": "деревянный дом",
+    "material": "wood",
+    "resource": "log",
+    "size": 5,
+    "unitsPerElement": 1,
+    "workMinutes": 12
+  },
+  {
+    "id": "stone_cabin",
+    "name": "каменный дом",
+    "material": "stone",
+    "resource": "granite",
+    "size": 5,
+    "unitsPerElement": 1,
+    "workMinutes": 22
+  }
+]

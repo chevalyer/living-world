@@ -1,0 +1,72 @@
+[
+  {
+    "id": "wood",
+    "name": "древесина",
+    "density": 650,
+    "insulation": 0.5,
+    "waterResistance": 0.2,
+    "strength": 0.6,
+    "flammability": 0.9,
+    "flexibility": 0.2
+  },
+  {
+    "id": "stone",
+    "name": "камень",
+    "density": 2600,
+    "insulation": 0.15,
+    "waterResistance": 1,
+    "strength": 1,
+    "flammability": 0,
+    "flexibility": 0
+  },
+  {
+    "id": "iron",
+    "name": "железо",
+    "density": 7870,
+    "insulation": 0.05,
+    "waterResistance": 1,
+    "strength": 1.8,
+    "flammability": 0,
+    "flexibility": 0.1
+  },
+  {
+    "id": "leather",
+    "name": "кожа",
+    "density": 860,
+    "insulation": 0.9,
+    "waterResistance": 0.8,
+    "strength": 0.7,
+    "flammability": 0.25,
+    "flexibility": 0.8
+  },
+  {
+    "id": "wool",
+    "name": "шерсть",
+    "density": 300,
+    "insulation": 1.6,
+    "waterResistance": 0.3,
+    "strength": 0.4,
+    "flammability": 0.4,
+    "flexibility": 1
+  },
+  {
+    "id": "flax",
+    "name": "лен",
+    "density": 450,
+    "insulation": 0.55,
+    "waterResistance": 0.15,
+    "strength": 0.4,
+    "flammability": 0.8,
+    "flexibility": 0.9
+  },
+  {
+    "id": "organic",
+    "name": "растительное вещество",
+    "density": 800,
+    "insulation": 0.1,
+    "waterResistance": 0.1,
+    "strength": 0.1,
+    "flammability": 0.6,
+    "flexibility": 1
+  }
+]

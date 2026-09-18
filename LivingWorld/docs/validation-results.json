@@ -1,0 +1,157 @@
+{
+  "environment": {
+    "dotnet_sdk": "8.0.415",
+    "dotnet_runtime": "8.0.21",
+    "godot": "4.5 stable mono",
+    "platform": "Linux"
+  },
+  "game_build": {
+    "status": "passed",
+    "configuration": "Debug, optimized simulation kernel",
+    "warnings": 0,
+    "errors": 0
+  },
+  "regression": {
+    "status": "passed",
+    "configuration": "Release",
+    "passed": 54,
+    "failed": 0,
+    "cases": [
+      "definition references",
+      "same seed produces same initial state",
+      "independent random streams",
+      "random sequence resumes",
+      "drainage is acyclic and non-increasing",
+      "river and lake generation",
+      "names contain no yo",
+      "age uses the birthday",
+      "missing food cannot be eaten",
+      "eating destroys exactly one physical item",
+      "inventory capacity is enforced",
+      "ownership and holder are different",
+      "wet clothing insulates less",
+      "equipment replaces overlapping slots",
+      "broken tools have no capability",
+      "child cannot execute adult work",
+      "zero strength blocks construction",
+      "plants stop growing in cold",
+      "plant species fixes harvest product",
+      "harvest cannot duplicate depleted yield",
+      "resource reservation is exclusive and expires",
+      "planner cannot find unknown food",
+      "planner composes harvest pickup eat",
+      "perception does not see through walls",
+      "pathfinding respects blocked tiles",
+      "path search obeys node budget",
+      "social events change directed relationships",
+      "teaching transfers learned knowledge",
+      "minors cannot form reproductive partnerships",
+      "relatives cannot partner",
+      "pregnancy produces linked child",
+      "closed roofed walls form a room",
+      "opening wall invalidates room",
+      "communal stock retains physical ownership",
+      "save resumes exact future state",
+      "future save version rejected",
+      "unknown component does not instantiate types",
+      "changed definitions are rejected for saves",
+      "death cancels actions and releases inventory",
+      "stored items update without equipment component",
+      "spoiled food is not consumed",
+      "additive content keeps existing saves loadable",
+      "phonetic names are deterministic and varied",
+      "name randomness does not change NPC traits",
+      "children inherit surname without Russian suffix changes",
+      "legacy name rules do not invalidate existing identities",
+      "name migration does not allow changed gameplay definitions",
+      "visual dirtiness is local to a chunk",
+      "unchanged water appearance does not invalidate terrain",
+      "visibility cache refreshes after walls change",
+      "render snapshots never share live mutable components",
+      "camera requests and speed do not alter equal tick outcomes",
+      "worker progresses without frames and pauses at tick boundary",
+      "compact planner preserves reference plans and costs"
+    ]
+  },
+  "structural": {
+    "structural_checks": 518,
+    "structural_status": "passed",
+    "csharp_files": 161,
+    "actions": 32,
+    "component_ids": 25,
+    "regression_cases_authored": 54,
+    "csharp_compilation": "not_part_of_structural_check",
+    "regression_execution": "not_part_of_structural_check",
+    "godot_visual_qa": "not_part_of_structural_check",
+    "errors": []
+  },
+  "godot_headless": {
+    "status": "passed",
+    "seed": 1847,
+    "size": 128,
+    "starting_people": 14,
+    "save_load": "passed",
+    "measurements": [
+      {
+        "label": "near_1",
+        "tps": 24.016332707329834,
+        "days_per_second": 0.01667800882453461,
+        "lod": 0,
+        "visible_chunks": 9,
+        "visible_objects": 425,
+        "population": 14,
+        "simulated_people": 14
+      },
+      {
+        "label": "near_32",
+        "tps": 771.5981002695063,
+        "days_per_second": 0.5358320140760461,
+        "lod": 0,
+        "visible_chunks": 9,
+        "visible_objects": 610,
+        "population": 14,
+        "simulated_people": 14
+      },
+      {
+        "label": "far_32",
+        "tps": 771.1473362742854,
+        "days_per_second": 0.5355189835238093,
+        "lod": 2,
+        "visible_chunks": 64,
+        "visible_objects": 14,
+        "population": 14,
+        "simulated_people": 14
+      },
+      {
+        "label": "offscreen_32",
+        "tps": 782.4667353579831,
+        "days_per_second": 0.5433796773319327,
+        "lod": 0,
+        "visible_chunks": 0,
+        "visible_objects": 0,
+        "population": 14,
+        "simulated_people": 14
+      }
+    ],
+    "gpu_fps": "not_measured"
+  },
+  "core_week": {
+    "seed": 1847,
+    "ticks": 10080,
+    "simulation_tick": 10080,
+    "population": 14,
+    "rooms": 5,
+    "simulation_ms": 13197.6376,
+    "hash": "78645EC4774143516DE9F1E91B86A60EC28CBD0CBFDC476742CCA934305522E0",
+    "size": 128,
+    "ticks_per_second": 763.773055868726
+  },
+  "visual_windowed_qa": {
+    "status": "not_run",
+    "reason": "Window server could not start in this environment."
+  },
+  "limits": [
+    "Single default map; performance depends on hardware and world complexity.",
+    "Long-term population balance and large settlements were not benchmarked."
+  ]
+}

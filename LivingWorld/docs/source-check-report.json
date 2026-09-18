@@ -1,0 +1,12 @@
+{
+  "structural_checks": 518,
+  "structural_status": "passed",
+  "csharp_files": 161,
+  "actions": 32,
+  "component_ids": 25,
+  "regression_cases_authored": 54,
+  "csharp_compilation": "not_part_of_structural_check",
+  "regression_execution": "not_part_of_structural_check",
+  "godot_visual_qa": "not_part_of_structural_check",
+  "errors": []
+}

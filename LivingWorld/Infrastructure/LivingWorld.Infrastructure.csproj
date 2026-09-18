@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Simulation/LivingWorld.Simulation.csproj" />
+
+  </ItemGroup>
+</Project>

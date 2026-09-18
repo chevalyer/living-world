@@ -1,0 +1,93 @@
+[
+  {
+    "id": "oak",
+    "name": "дуб",
+    "kind": "tree",
+    "product": "log",
+    "minTemperature": 5,
+    "growthDays": 365,
+    "regrowthDays": 1000,
+    "lifespanDays": 60000,
+    "color": "#466947",
+    "yield": 6
+  },
+  {
+    "id": "pine",
+    "name": "сосна",
+    "kind": "tree",
+    "product": "log",
+    "minTemperature": 0,
+    "growthDays": 420,
+    "regrowthDays": 1000,
+    "lifespanDays": 80000,
+    "color": "#325b48",
+    "yield": 5,
+    "shape": "conifer",
+    "optimalTemperature": 8
+  },
+  {
+    "id": "raspberry_bush",
+    "name": "куст малины",
+    "kind": "bush",
+    "product": "raspberry",
+    "minTemperature": 6,
+    "growthDays": 25,
+    "regrowthDays": 3,
+    "lifespanDays": 3650,
+    "color": "#587847",
+    "fruitColor": "#ce596e",
+    "yield": 22
+  },
+  {
+    "id": "blueberry_bush",
+    "name": "куст черники",
+    "kind": "bush",
+    "product": "blueberry",
+    "minTemperature": 3,
+    "growthDays": 30,
+    "regrowthDays": 3,
+    "lifespanDays": 4000,
+    "color": "#476b50",
+    "fruitColor": "#656baf",
+    "yield": 20,
+    "optimalTemperature": 12
+  },
+  {
+    "id": "wild_flax",
+    "name": "дикий лен",
+    "kind": "grass",
+    "product": "fiber",
+    "minTemperature": 5,
+    "growthDays": 22,
+    "regrowthDays": 9,
+    "lifespanDays": 370,
+    "color": "#83975a",
+    "fruitColor": "#9aaecd",
+    "yield": 5
+  },
+  {
+    "id": "wheat",
+    "name": "пшеница",
+    "kind": "crop",
+    "product": "grain",
+    "minTemperature": 7,
+    "growthDays": 60,
+    "regrowthDays": 18,
+    "lifespanDays": 210,
+    "color": "#bfa769",
+    "yield": 14
+  },
+  {
+    "id": "meadow_flower",
+    "name": "луговые цветы",
+    "kind": "flower",
+    "product": "fiber",
+    "minTemperature": 5,
+    "growthDays": 18,
+    "regrowthDays": 12,
+    "lifespanDays": 380,
+    "color": "#839765",
+    "fruitColor": "#e9d9a8",
+    "yield": 2
+  }
+]

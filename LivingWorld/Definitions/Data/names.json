@@ -1,0 +1,14 @@
+{
+  "vowels": "аеиоуэюя",
+  "consonants": "бвгджзклмнпрстфхцчш",
+  "patterns": [
+    "CV",
+    "CV",
+    "CVC",
+    "VC"
+  ],
+  "firstMinSyllables": 2,
+  "firstMaxSyllables": 3,
+  "lastMinSyllables": 2,
+  "lastMaxSyllables": 4
+}

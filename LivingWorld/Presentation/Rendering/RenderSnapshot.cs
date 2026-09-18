@@ -1,0 +1,264 @@
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Text;
+using LivingWorld.Simulation;
+
+namespace LivingWorld.Presentation;
+
+// These records contain only values and read-only collections. They never expose live components.
+public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic);
+public readonly record struct RenderEntity(int Id, GridPoint Tile, string Kind, string Color, string Accent,
+    string Shape, float Growth, float Yield);
+public readonly record struct RenderPerson(int Id, GridPoint Tile, int Appearance, bool Child, bool Alive, bool Moving, bool Sleeping, bool Pregnant);
+public readonly record struct RenderMemory(GridPoint Tile, float Confidence);
+public sealed record RenderChunk(int Key, int X, int Y, long Revision,
+    ReadOnlyCollection<RenderTile> Tiles, ReadOnlyCollection<RenderEntity> Entities);
+public sealed record InspectorSnapshot(string Title, string Text);
+public sealed record ViewRequest(int Selected = 0, GridPoint? Tile = null, bool Debug = false);
+
+public sealed record RenderSnapshot(
+    long Generation, long Sequence, long PublishedAt, long Tick, DateTime Date, int Seed, int Width, int Height,
+    GridPoint Start, float Sunlight, string Season, float Air, bool Rain, int Population, int Homes, int Rooms,
+    string LastEvent, bool Paused, int Speed, double TicksPerSecond,
+    ReadOnlyCollection<RenderChunk> Chunks, ReadOnlyCollection<RenderPerson> People,
+    InspectorSnapshot Inspector, string WorldText, string SystemsText,
+    ReadOnlyCollection<GridPoint> Path, ReadOnlyCollection<RenderMemory> Memories)
+{
+    public int Columns => (Width + 15) / 16;
+    public bool Contains(GridPoint point) => point.X >= 0 && point.Y >= 0 && point.X < Width && point.Y < Height;
+    public static int DetailLevel(float pixelsPerTile) => pixelsPerTile >= 12 ? 0 : pixelsPerTile >= 6 ? 1 : 2;
+}
+
+// Owned exclusively by the simulation thread. Unchanged chunk payloads are shared between publications.
+public sealed class RenderSnapshotBuilder
+{
+    private RenderChunk[] _chunks = [];
+    private int[] _mapRevisions = [];
+    private WorldMap? _map;
+    private long _revision;
+    private long _sequence;
+    private long _lastStatic;
+    private ViewRequest? _lastRequest;
+    private InspectorSnapshot _inspector = new("местность", "Выбери жителя или клетку.");
+    private string _worldText = "", _systemsText = "";
+    private int _population, _homes;
+
+    public RenderSnapshot Capture(SimulationSession session, long generation, bool paused, int speed,
+        double ticksPerSecond, ViewRequest request, bool force = false)
+    {
+        var s = session.State;
+        var map = s.Map;
+        var now = Stopwatch.GetTimestamp();
+        if (!ReferenceEquals(_map, map))
+        {
+            _map = map;
+            _chunks = new RenderChunk[((map.Width + 15) / 16) * ((map.Height + 15) / 16)];
+            _mapRevisions = Enumerable.Repeat(-1, _chunks.Length).ToArray();
+            force = true;
+        }
+        if (force || Stopwatch.GetElapsedTime(_lastStatic, now).TotalSeconds >= .25)
+        {
+            RefreshChunks(session);
+            _population = s.Population;
+            _homes = s.Entities.Store<ConstructionComponent>().All.Count(x => x.Value.Finished);
+            _worldText = DescribeWorld(session);
+            _systemsText = DescribeSystems(session);
+            _inspector = DescribeSelection(session, request);
+            _lastStatic = now;
+            _lastRequest = request;
+        }
+        else if (_lastRequest != request)
+        {
+            _inspector = DescribeSelection(session, request);
+            _lastRequest = request;
+        }
+        var people = new List<RenderPerson>();
+        foreach (var (id, identity) in s.Entities.Store<IdentityComponent>().All)
+        {
+            var e = s.Entities;
+            people.Add(new(id, e.Get<PositionComponent>(id).Tile, identity.Appearance,
+                s.Clock.Age(identity.BirthDate) < 18, e.Get<HealthComponent>(id).Alive,
+                e.Get<MovementComponent>(id).Path.Count > 0,
+                e.Get<DecisionComponent>(id).Plan.FirstOrDefault()?.Action == "sleep",
+                e.Get<FamilyComponent>(id).PregnancyDueTick.HasValue));
+        }
+        GridPoint[] path = [];
+        RenderMemory[] memories = [];
+        if (request.Debug && s.Entities.Has<IdentityComponent>(request.Selected))
+        {
+            path = s.Entities.Get<MovementComponent>(request.Selected).Path.ToArray();
+            memories = s.Entities.Get<MemoryComponent>(request.Selected).Observations
+                .Where(o => o.Kind is "water" or "plant").Select(o => new RenderMemory(o.Position, o.Confidence)).ToArray();
+        }
+        return new(generation, ++_sequence, now, s.Clock.Tick, s.Clock.Now, s.Seed, map.Width, map.Height,
+            s.Start, s.Weather.Sunlight, s.Clock.Season, EnvironmentQueries.Air(s, s.Start), s.Weather.Rain > .1f,
+            _population, _homes, s.Rooms.Count, s.Journal.LastOrDefault()?.Text ?? "мир просыпается", paused, speed,
+            ticksPerSecond, Array.AsReadOnly((RenderChunk[])_chunks.Clone()), people.AsReadOnly(), _inspector,
+            _worldText, _systemsText, Array.AsReadOnly(path), Array.AsReadOnly(memories));
+    }
+
+    private void RefreshChunks(SimulationSession session)
+    {
+        var s = session.State;
+        var columns = (s.Map.Width + 15) / 16;
+        for (var key = 0; key < _chunks.Length; key++)
+        {
+            var cx = key % columns;
+            var cy = key / columns;
+            var previous = _chunks[key];
+            var entities = new List<RenderEntity>();
+            // A radius of zero addresses exactly one spatial chunk.
+            foreach (var id in session.Spatial.Query(new(cx * 16, cy * 16), 0))
+            {
+                var e = s.Entities;
+                var position = e.Get<PositionComponent>(id).Tile;
+                if (e.Try<PlantComponent>(id) is { } plant)
+                {
+                    var d = session.Definitions.Plants[plant.Definition];
+                    entities.Add(new(id, position, d.Kind, d.Color, d.FruitColor, d.Shape,
+                        MathF.Round(plant.Growth * 16) / 16, (int)plant.Yield));
+                }
+                else if (e.Try<ResourceComponent>(id) is { } resource)
+                    entities.Add(new(id, position, "resource", "#777b79", resource.Product == "iron_ore" ? "#a68b78" : "#a7aaa0", "", 1, 0));
+                else if (e.Try<ItemComponent>(id) is { } item)
+                {
+                    var d = session.Definitions.Items[item.Definition];
+                    var bulk = d.Tags.Contains("construction", StringComparer.Ordinal) || d.Tags.Contains("fuel", StringComparer.Ordinal);
+                    entities.Add(new(id, position, "item", d.Calories > 0 ? "#d9b476" : "#ded9c8",
+                        d.Material == "wood" ? "#90724e" : "#b6b5a6", bulk ? "bulk" : "", 1, 0));
+                }
+                else if (e.Try<BuildingElementComponent>(id) is { } part)
+                    entities.Add(new(id, position, part.Kind, part.Material == "stone" ? "#a5a59a" : "#a38b67", "", "", 1, 0));
+                else if (e.Try<ConstructionComponent>(id) is { Finished: false } project)
+                    foreach (var planned in project.Elements.Skip(project.Completed).Where(p => p.Kind == "wall"))
+                        entities.Add(new(id, planned.Position, "blueprint", "#b6c4ad", "", "", 1, 0));
+                else if (e.Has<StorageComponent>(id))
+                    entities.Add(new(id, position, "storage", "#775c3f", "#bb9b66", "", 1, 0));
+                else if (e.Try<FireComponent>(id) is { } fire)
+                    entities.Add(new(id, position, "fire", "#d68b4b", "#eacb80", "", 1, fire.FuelMinutes > 0 ? 1 : 0));
+            }
+            entities.Sort((a, b) =>
+            {
+                var order = a.Tile.Y.CompareTo(b.Tile.Y);
+                return order != 0 ? order : a.Id.CompareTo(b.Id);
+            });
+            var revision = s.Map.ChunkVisualRevision(key);
+            var terrainChanged = previous is null || revision != _mapRevisions[key];
+            var objectsChanged = previous is null || !previous.Entities.SequenceEqual(entities);
+            if (!terrainChanged && !objectsChanged) continue;
+            var tiles = previous?.Tiles;
+            if (terrainChanged)
+            {
+                var values = new RenderTile[256];
+                for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++)
+                {
+                    var point = new GridPoint(cx * 16 + x, cy * 16 + y);
+                    if (!s.Map.Contains(point)) continue;
+                    var t = s.Map[point];
+                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic);
+                }
+                tiles = Array.AsReadOnly(values);
+            }
+            _mapRevisions[key] = revision;
+            _chunks[key] = new(key, cx, cy, ++_revision, tiles!, entities.AsReadOnly());
+        }
+    }
+
+    private static InspectorSnapshot DescribeSelection(SimulationSession session, ViewRequest request)
+    {
+        var s = session.State;
+        if (s.Entities.Has<IdentityComponent>(request.Selected)) return DescribePerson(session, request.Selected);
+        if (request.Tile is { } p && s.Map.Contains(p))
+        {
+            var t = s.Map[p];
+            return new("местность", $"клетка {p.X}, {p.Y}\n\n{BiomeName(t.Biome)}\nвысота {t.Height:F3}\nвлажность {t.Moisture:P0}\nплодородие {t.Fertility:P0}\nвода {t.Water}\nлед {t.Ice*100:F1} см\nснег {t.Snow:P0}\nпроходимость {(s.Map.Walkable(p)?"да":"нет")}\nтропа {t.Traffic:F0}\nтемпература {EnvironmentQueries.Air(s,p):F1} °C");
+        }
+        return new("выбери жителя", "Нажми на жителя. Здесь появятся нужды, вещи, навыки, отношения и объяснение текущего решения.\n\nF2 покажет известные ему ресурсы и маршрут.");
+    }
+
+    private static InspectorSnapshot DescribePerson(SimulationSession session, int id)
+    {
+        var s=session.State;
+        var e=s.Entities;
+        var identity=e.Get<IdentityComponent>(id);
+        var health=e.Get<HealthComponent>(id);
+        var needs=e.Get<NeedsComponent>(id);
+        var decision=e.Get<DecisionComponent>(id);
+        var family=e.Get<FamilyComponent>(id);
+        var memory=e.Get<MemoryComponent>(id);
+        var text=new StringBuilder();
+        text.AppendLine($"{s.Clock.Age(identity.BirthDate)} лет · {(identity.Sex=="female"?"женский пол":"мужской пол")}");
+        text.AppendLine($"рождение: {identity.BirthDate:dd.MM.yyyy}");
+        if (!health.Alive) return new(identity.FullName, text.AppendLine("\nумер: "+health.DeathReason).ToString());
+        Section(text, "состояние");
+        text.AppendLine($"здоровье  {health.Value:F0}/100\nголод  {needs.Hunger:P0}   жажда {needs.Thirst:P0}");
+        text.AppendLine($"усталость  {needs.Fatigue:P0}\nодиночество  {needs.Loneliness:P0}");
+        text.AppendLine($"температура тела  {e.Get<ThermalComponent>(id).Temperature:F1} °C");
+        Section(text, "сейчас");
+        var step=decision.Plan.FirstOrDefault();
+        text.AppendLine(step is null?"оценивает обстановку":Safe(session.Actions[step.Action].Label));
+        text.AppendLine("причина: "+Safe(decision.Motive));
+        if (step is not null&&decision.RemainingMinutes>0)text.AppendLine($"осталось {decision.RemainingMinutes:F0} игровых минут");
+        if (decision.Plan.Count>1)text.AppendLine("далее: "+string.Join(" → ", decision.Plan.Skip(1).Take(4).Select(x=>session.Actions[x.Action].Label)));
+        Section(text, "оценка вариантов");
+        foreach (var choice in decision.Alternatives.Take(5))text.AppendLine($"{choice.Score:F2} · {Safe(choice.Motive)}\n[color=#879581]{Safe(choice.FirstAction)} · {choice.Cost:F0} мин[/color]");
+        if (decision.LastFailure.Length>0)text.AppendLine("последняя неудача: "+Safe(decision.LastFailure));
+        Section(text, "инвентарь");
+        text.AppendLine($"{session.Inventory.Mass(id):F1} / {e.Get<InventoryComponent>(id).MaxMass:F0} кг");
+        foreach (var group in e.Get<InventoryComponent>(id).Items.GroupBy(item=>e.Get<ItemComponent>(item).Definition))text.AppendLine($"{Safe(session.Definitions.Items[group.Key].Name)} × {group.Count()}");
+        Section(text, "одежда");
+        foreach (var itemId in e.Get<EquipmentComponent>(id).Items)
+        {
+            var item=e.Get<ItemComponent>(itemId);
+            text.AppendLine($"{Safe(session.Definitions.Items[item.Definition].Name)}\n[color=#879581]прочность {item.Durability:F0} · влажность {item.Wetness:P0}[/color]");
+        }
+        Section(text, "навыки");
+        foreach (var skill in e.Get<SkillsComponent>(id).Experience.OrderByDescending(x=>x.Value).Take(6))text.AppendLine($"{Safe(skill.Key)}  {e.Get<SkillsComponent>(id).Level(skill.Key):F1}");
+        Section(text, "знания и память");
+        text.AppendLine(string.Join(", ", e.Get<KnowledgeComponent>(id).Facts));
+        text.AppendLine($"наблюдений: {memory.Observations.Count}");
+        foreach (var observation in memory.Observations.Where(x=>x.Kind is "plant" or "water" or "project").OrderByDescending(x=>x.SeenTick).Take(3))text.AppendLine($"{observation.Kind} · {observation.Position.X}, {observation.Position.Y} · уверенность {observation.Confidence:P0}");
+        Section(text, "отношения");
+        foreach (var person in e.Get<RelationshipComponent>(id).People.OrderByDescending(x=>x.Value.Familiarity).Take(4))
+        {
+            var name=e.Try<IdentityComponent>(person.Key)?.FullName??"неизвестно";
+            text.AppendLine($"{Safe(name)}\n[color=#879581]доверие {person.Value.Trust:P0} · симпатия {person.Value.Affection:P0}[/color]");
+        }
+        if (family.Partner!=0)text.AppendLine("партнер: "+Safe(e.Get<IdentityComponent>(family.Partner).FullName));
+        if (family.Children.Count>0)text.AppendLine("детей: "+family.Children.Count);
+        if (family.PregnancyDueTick is { } due)text.AppendLine($"до рождения: {Math.Max(0,(due-s.Clock.Tick)/1440)} дней");
+        return new(identity.FullName, text.ToString());
+    }
+
+    private static string DescribeWorld(SimulationSession session)
+    {
+        var s=session.State;
+        var text=new StringBuilder();
+        text.AppendLine($"сид {s.Seed}\n{s.Map.Width} × {s.Map.Height} клеток\n{s.Entities.Count} сущностей\nтик {s.Clock.Tick}");
+        Section(text,"природа");
+        text.AppendLine($"растений {s.Entities.Store<PlantComponent>().Count}\nпредметов {s.Entities.Store<ItemComponent>().Count}\nпроектов {s.Entities.Store<ConstructionComponent>().Count}");
+        Section(text,"погода");
+        text.AppendLine($"световой день {s.Weather.DaylightHours:F1} ч\nветер {s.Weather.Wind:P0}\nосадки {s.Weather.Rain:P0}");
+        Section(text,"история");
+        foreach(var ev in s.Journal.AsEnumerable().Reverse().Take(16))text.AppendLine($"[color=#879581]{s.Clock.Epoch.AddMinutes(ev.Tick):dd.MM HH:mm}[/color]\n{Safe(ev.Text)}\n");
+        return text.ToString();
+    }
+
+    private static string DescribeSystems(SimulationSession session)
+    {
+        var text=new StringBuilder();
+        text.AppendLine($"последний тик {session.LastTickMilliseconds:F2} мс");
+        foreach(var p in session.Profiles.Values)
+        {
+            Section(text,p.Name);
+            text.AppendLine($"среднее {p.AverageMilliseconds:F3} мс\nмаксимум {p.MaxMilliseconds:F3} мс\nобработано {p.Entities} · вызовов {p.Calls}");
+        }
+        return text.ToString();
+    }
+    private static string Safe(string value)=>value.Replace("[","[lb]");
+    private static void Section(StringBuilder text,string title)=>text.AppendLine("\n[color=#8f9d87]"+title.ToUpperInvariant()+"[/color]");
+    private static string BiomeName(Biome biome)=>biome switch
+    {
+        Biome.Forest=>"лес",Biome.Meadow=>"луг",Biome.Marsh=>"болото",Biome.Beach=>"берег",Biome.Mountain=>"горы",Biome.Alpine=>"высокогорье",_=>"море"
+    };
+}

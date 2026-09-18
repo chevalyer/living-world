@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Keep the minute-by-minute kernel optimized during normal Godot editor runs. -->
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Definitions/LivingWorld.Definitions.csproj" />
+
+  </ItemGroup>
+</Project>

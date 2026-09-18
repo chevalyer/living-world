@@ -1,0 +1,111 @@
+[
+  {
+    "id": "stone_axe",
+    "name": "собрать топор",
+    "inputs": {
+      "log": 1,
+      "granite": 1
+    },
+    "output": "stone_axe",
+    "skill": "crafting",
+    "knowledge": "crafting",
+    "minutes": 35
+  },
+  {
+    "id": "stone_pick",
+    "name": "собрать кирку",
+    "inputs": {
+      "log": 1,
+      "granite": 2
+    },
+    "output": "stone_pick",
+    "skill": "crafting",
+    "knowledge": "crafting",
+    "minutes": 45
+  },
+  {
+    "id": "cloth",
+    "name": "обработать волокно",
+    "operation": "cut",
+    "inputs": {
+      "fiber": 3
+    },
+    "output": "cloth",
+    "skill": "tailoring",
+    "knowledge": "tailoring",
+    "minutes": 25
+  },
+  {
+    "id": "linen_shirt",
+    "name": "сшить рубаху",
+    "operation": "sew",
+    "inputs": {
+      "cloth": 2
+    },
+    "output": "linen_shirt",
+    "skill": "tailoring",
+    "knowledge": "tailoring",
+    "minutes": 45
+  },
+  {
+    "id": "linen_trousers",
+    "name": "сшить штаны",
+    "operation": "sew",
+    "inputs": {
+      "cloth": 2
+    },
+    "output": "linen_trousers",
+    "skill": "tailoring",
+    "knowledge": "tailoring",
+    "minutes": 45
+  },
+  {
+    "id": "leather_jacket",
+    "name": "сшить куртку",
+    "operation": "sew",
+    "inputs": {
+      "leather": 3
+    },
+    "output": "leather_jacket",
+    "skill": "tailoring",
+    "knowledge": "tailoring",
+    "minutes": 100
+  },
+  {
+    "id": "wool_coat",
+    "name": "сшить плащ",
+    "operation": "sew",
+    "inputs": {
+      "wool": 3
+    },
+    "output": "wool_coat",
+    "skill": "tailoring",
+    "knowledge": "tailoring",
+    "minutes": 90
+  },
+  {
+    "id": "iron_ingot",
+    "name": "обжечь руду",
+    "operation": "heat",
+    "inputs": {
+      "iron_ore": 2,
+      "log": 2
+    },
+    "output": "iron_ingot",
+    "skill": "smithing",
+    "knowledge": "smithing",
+    "minutes": 150
+  },
+  {
+    "id": "iron_pick",
+    "name": "собрать железную кирку",
+    "inputs": {
+      "iron_ingot": 1,
+      "log": 1
+    },
+    "output": "iron_pick",
+    "skill": "smithing",
+    "knowledge": "smithing",
+    "minutes": 90
+  }
+]

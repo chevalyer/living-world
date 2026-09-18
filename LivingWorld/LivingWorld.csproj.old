@@ -1,0 +1,12 @@
+<Project Sdk="Godot.NET.Sdk/4.5.0">
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>LivingWorld.Presentation</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Presentation/**/*.cs" />
+    <ProjectReference Include="Simulation/LivingWorld.Simulation.csproj" />
+    <ProjectReference Include="Infrastructure/LivingWorld.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
