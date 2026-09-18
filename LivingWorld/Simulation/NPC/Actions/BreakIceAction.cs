@@ -10,7 +10,7 @@ public sealed class BreakIceAction : SimAction
         {
             var op=Option(o.Position,duration:18);
             op.Requires=[new("tool:mine",1)];
-            op.Effects=[new("hydrated",1,true)];
+            op.Effects=[new("tool:mine",-1),new("hydrated",1,true)];
             yield return op;
         }
     }

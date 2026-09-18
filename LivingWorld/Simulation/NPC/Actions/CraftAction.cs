@@ -15,7 +15,9 @@ public sealed class CraftAction : SimAction
             op.Effects.Add(new(Item(recipe.Output),recipe.Count));
             if(recipe.Tool.Length>0)op.Requires.Add(new("tool:"+recipe.Tool,1));
             if(recipe.Operation=="heat")op.Requires.Add(new("heat",1));
-            foreach(var capability in c.Definitions.Items[recipe.Output].Tools)op.Effects.Add(new("tool:"+capability.Key,1,true));
+            var outputDefinition=c.Definitions.Items[recipe.Output];
+            foreach(var capability in outputDefinition.Tools)
+                op.Effects.Add(new("tool:"+capability.Key,Math.Max(1,(int)MathF.Floor(outputDefinition.Durability/2)),true));
             op.Skill=recipe.Skill;
             yield return op;
         }

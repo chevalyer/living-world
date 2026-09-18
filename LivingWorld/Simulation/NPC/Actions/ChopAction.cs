@@ -15,6 +15,7 @@ public sealed class ChopAction : SimAction
             var efficiency=c.Inventory.Where(x=>x.Item.Durability>0).Select(x=>c.Definitions.Items[x.Item.Definition].Tools.GetValueOrDefault("chop")*x.Item.Quality*x.Item.Sharpness).DefaultIfEmpty(.5f).Max();
             var op=Option(o.Position, o.Entity, o.Product, 18/Math.Max(.3f, efficiency+c.Skills.Level("woodworking")*.1f));
             op.Requires=[new("tool:chop", 1), new(Source(o.Entity), units)];
+            op.Effects.Add(new("tool:chop",-1));
             op.Effects=[new(Source(o.Entity), -units), new("ground:"+o.Entity+":"+o.Product, units)];
             op.Skill="woodworking";
             yield return op;

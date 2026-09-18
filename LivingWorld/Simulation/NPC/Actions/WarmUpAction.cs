@@ -11,10 +11,12 @@ public sealed class WarmUpAction : SimAction
             op.Effects=[new("warm",1,true)];
             yield return op;
         }
-        foreach(var o in c.OfKind("shelter").Take(3))
+        var home=c.Family.HomeProject==0?null:c.Known.FirstOrDefault(o=>o.Kind=="project"&&o.Entity==c.Family.HomeProject);
+        foreach(var o in c.OfKind("shelter").Take(4))
         {
             var op=Option(o.Position,duration:45,range:0);
             op.Effects=[new("warm",1,true),new("sheltered",1,true)];
+            if(home is not null&&o.Position.Distance(home.Position)<=4)op.Cost=30;
             yield return op;
         }
     }

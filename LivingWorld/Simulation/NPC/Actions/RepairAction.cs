@@ -19,7 +19,8 @@ public sealed class RepairAction : SimAction
             var op=Option(c.Position,id,material.Id,20,local:true);
             op.Requires=[new(Item(material.Id),1)];
             op.Effects=[new(Item(material.Id),-1)];
-            foreach(var tool in d.Tools)op.Effects.Add(new("tool:"+tool.Key,1,true));
+            foreach(var tool in d.Tools)
+                op.Effects.Add(new("tool:"+tool.Key,Math.Max(1,(int)MathF.Floor(d.Durability*.8f/2)),true));
             yield return op;
         }
     }

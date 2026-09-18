@@ -45,7 +45,8 @@ public sealed class PlanningContext
             var usable=definition.Calories<=0||item.Freshness>=.1f;
             if (usable)state.Facts[ItemFact(item.Definition)]=state.Get(ItemFact(item.Definition))+1;
             if (definition.Calories>0&&item.Freshness>=.1f)reserve+=(int)MathF.Round(definition.Calories*item.Freshness);
-            foreach (var tool in definition.Tools)if (item.Durability>0)state.Facts["tool:"+tool.Key]=1;
+            foreach(var tool in definition.Tools)
+                if(item.Durability>0)state.Facts["tool:"+tool.Key]=Math.Max(state.Get("tool:"+tool.Key),Math.Max(1,(int)MathF.Floor(item.Durability/2)));
         }
         state.Facts["food.reserve"]=reserve;
         foreach (var o in Known.Where(o=>o.Quantity>0))state.Facts["source:"+o.Entity]=o.Quantity;
