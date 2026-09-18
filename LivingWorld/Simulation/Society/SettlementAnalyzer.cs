@@ -33,10 +33,39 @@ public static class SettlementAnalyzer
         if (homes.Length==0)return Array.Empty<SettlementSummary>();
 
         var clusters=Clusters(homes);
-        var result=new List<SettlementSummary>(clusters.Count);
-        foreach (var cluster in clusters)
+        var clusterByHome=new Dictionary<int,int>();
+        for (var index=0;index<clusters.Count;index++)
+            foreach (var home in clusters[index])clusterByHome[home.Id]=index;
+
+        var membersByCluster=Enumerable.Range(0,clusters.Count).Select(_=>new List<int>()).ToArray();
+        foreach (var id in LivingPeople(session))
         {
-            var homeIds=cluster.Select(x=>x.Id).ToHashSet();
+            var family=e.Get<FamilyComponent>(id);
+            if (family.HomeProject!=0)
+            {
+                if (clusterByHome.TryGetValue(family.HomeProject,out var homeCluster))
+                    membersByCluster[homeCluster].Add(id);
+                continue;
+            }
+
+            var position=e.Get<PositionComponent>(id).Tile;
+            var nearest=clusters
+                .Select((cluster,index)=>new
+                {
+                    Index=index,
+                    Distance=cluster.Min(home=>home.Position.Distance(position)),
+                    Anchor=cluster.Min(home=>home.Id)
+                })
+                .OrderBy(x=>x.Distance)
+                .ThenBy(x=>x.Anchor)
+                .First();
+            if (nearest.Distance<=ResidentReach)membersByCluster[nearest.Index].Add(id);
+        }
+
+        var result=new List<SettlementSummary>(clusters.Count);
+        for (var clusterIndex=0;clusterIndex<clusters.Count;clusterIndex++)
+        {
+            var cluster=clusters[clusterIndex];
             var anchor=cluster.Min(x=>x.Id);
             var center=new GridPoint(
                 (int)Math.Round(cluster.Average(x=>x.Position.X)),
@@ -51,17 +80,7 @@ public static class SettlementAnalyzer
             maxX=Math.Clamp(maxX,0,s.Map.Width-1);
             maxY=Math.Clamp(maxY,0,s.Map.Height-1);
 
-            var members=LivingPeople(session)
-                .Where(id=>
-                {
-                    var family=e.Get<FamilyComponent>(id);
-                    if (family.HomeProject!=0)return homeIds.Contains(family.HomeProject);
-                    var position=e.Get<PositionComponent>(id).Tile;
-                    return cluster.Min(h=>h.Position.Distance(position))<=ResidentReach;
-                })
-                .Distinct()
-                .OrderBy(id=>id)
-                .ToArray();
+            var members=membersByCluster[clusterIndex].Distinct().OrderBy(id=>id).ToArray();
             var memberSet=members.ToHashSet();
 
             var families=new HashSet<int>();
@@ -150,7 +169,9 @@ public static class SettlementAnalyzer
             while (queue.TryDequeue(out var index))
             {
                 cluster.Add(homes[index]);
-                foreach (var other in unvisited.Where(other=>homes[index].Position.Distance(homes[other].Position)<=HomeLinkDistance).ToArray())
+                foreach (var other in unvisited
+                    .Where(other=>homes[index].Position.Distance(homes[other].Position)<=HomeLinkDistance)
+                    .ToArray())
                 {
                     unvisited.Remove(other);
                     queue.Enqueue(other);
