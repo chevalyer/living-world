@@ -19,5 +19,26 @@ public sealed class TakeAction : SimAction
             yield return op;
         }
     }
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
+    {
+        if(!base.CanExecute(s,actor,step,out reason))return false;
+        var e=s.State.Entities;
+        if(!e.Has<StorageComponent>(step.Target)||!StorageService.CanUse(s,actor,step.Target))
+        {
+            reason="предмет уже забрали";
+            return false;
+        }
+        var definition=s.Definitions.Items[step.Argument];
+        var available=s.Inventory.Items(step.Target).Any(id=>
+        {
+            var item=e.Get<ItemComponent>(id);
+            var owner=e.Get<OwnershipComponent>(id).Owner;
+            return item.Definition==step.Argument&&(owner==0||owner==actor)&&
+                (definition.Calories<=0||item.Freshness>=.1f);
+        });
+        if(available)return true;
+        reason=definition.Calories>0?"еда больше недоступна":"предмет уже забрали";
+        return false;
+    }
     public override bool Execute(SimulationSession s,int actor,ActionStep step)=>StorageService.Take(s,actor,step.Target,step.Argument);
 }
