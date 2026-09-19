@@ -1,0 +1,14 @@
+{
+  "id": "carrot",
+  "name": "морковь",
+  "material": "organic",
+  "mass": 0.22,
+  "volume": 0.3,
+  "calories": 150,
+  "water": 0.16,
+  "shelfLifeDays": 18,
+  "tags": [
+    "food",
+    "vegetable"
+  ]
+}

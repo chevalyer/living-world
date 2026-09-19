@@ -1,0 +1,27 @@
+{
+  "id": "stone_hammer",
+  "name": "каменный молоток",
+  "material": "stone",
+  "mass": 1.6,
+  "volume": 2.4,
+  "tools": {
+    "build": 0.6
+  },
+  "durability": 80,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "stone_hammer",
+      "name": "собрать каменный молоток",
+      "inputs": {
+        "log": 1,
+        "granite": 1
+      },
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 30
+    }
+  ]
+}

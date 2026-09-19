@@ -1,0 +1,26 @@
+{
+  "id": "leather_apron",
+  "name": "кожаный фартук",
+  "material": "leather",
+  "mass": 0.9,
+  "volume": 1.1,
+  "slots": [
+    "outer_torso"
+  ],
+  "coverage": 0.34,
+  "thickness": 1.35,
+  "comfort": 0.72,
+  "recipes": [
+    {
+      "id": "leather_apron",
+      "name": "сшить кожаный фартук",
+      "inputs": {
+        "leather_strip": 4
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 65
+    }
+  ]
+}

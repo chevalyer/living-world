@@ -1,0 +1,22 @@
+{
+  "id": "barley",
+  "name": "ячмень",
+  "kind": "crop",
+  "product": "barley_grain",
+  "seed": "barley_seed",
+  "seedYield": 3,
+  "minTemperature": 5,
+  "maxTemperature": 32,
+  "frostTolerance": -6,
+  "minMoisture": 0.28,
+  "growthDays": 55,
+  "yield": 12,
+  "regrowthDays": 18,
+  "lifespanDays": 190,
+  "color": "#b7a26b",
+  "fruitColor": "#d2bb77",
+  "spawnWeight": 0.14,
+  "optimalTemperature": 15,
+  "shape": "grass",
+  "harvestRemovesPlant": true
+}

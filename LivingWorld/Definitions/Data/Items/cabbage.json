@@ -1,0 +1,14 @@
+{
+  "id": "cabbage",
+  "name": "капуста",
+  "material": "organic",
+  "mass": 0.75,
+  "volume": 1.1,
+  "calories": 180,
+  "water": 0.35,
+  "shelfLifeDays": 24,
+  "tags": [
+    "food",
+    "vegetable"
+  ]
+}

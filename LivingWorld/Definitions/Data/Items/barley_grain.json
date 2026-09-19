@@ -1,0 +1,14 @@
+{
+  "id": "barley_grain",
+  "name": "ячмень",
+  "material": "organic",
+  "mass": 0.2,
+  "volume": 0.3,
+  "calories": 610,
+  "water": 0.03,
+  "shelfLifeDays": 180,
+  "tags": [
+    "food",
+    "grain"
+  ]
+}

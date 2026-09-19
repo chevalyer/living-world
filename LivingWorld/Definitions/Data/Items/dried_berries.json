@@ -1,0 +1,38 @@
+{
+  "id": "dried_berries",
+  "name": "сушёные ягоды",
+  "material": "organic",
+  "mass": 0.16,
+  "volume": 0.2,
+  "calories": 190,
+  "water": 0.03,
+  "shelfLifeDays": 70,
+  "tags": [
+    "food",
+    "preserved"
+  ],
+  "recipes": [
+    {
+      "id": "dried_raspberry",
+      "name": "высушить малину",
+      "inputs": {
+        "raspberry": 2
+      },
+      "operation": "dry",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 45
+    },
+    {
+      "id": "dried_blueberry",
+      "name": "высушить чернику",
+      "inputs": {
+        "blueberry": 2
+      },
+      "operation": "dry",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 45
+    }
+  ]
+}

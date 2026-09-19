@@ -1,0 +1,22 @@
+{
+  "id": "pea",
+  "name": "горох",
+  "kind": "crop",
+  "product": "peas",
+  "seed": "pea_seed",
+  "seedYield": 3,
+  "minTemperature": 5,
+  "maxTemperature": 28,
+  "frostTolerance": -5,
+  "minMoisture": 0.33,
+  "growthDays": 50,
+  "yield": 10,
+  "regrowthDays": 16,
+  "lifespanDays": 165,
+  "color": "#6e9253",
+  "fruitColor": "#8ebc63",
+  "spawnWeight": 0.08,
+  "optimalTemperature": 15,
+  "shape": "grass",
+  "harvestRemovesPlant": true
+}
