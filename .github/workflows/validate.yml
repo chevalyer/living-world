@@ -58,8 +58,10 @@ jobs:
           assert data["population"]==14, f"unexpected week population: {data['population']}"
           assert not data["deaths"], f"unexpected week deaths: {data['deaths']}"
           assert data["facilities"]>0, "NPCs produced no facilities in the integration world"
+          assert data["farms"]>0, "NPCs produced no farm plots in the integration world"
+          assert data["cultivated_crops"]>0, "NPCs planted no crops on farm plots"
           assert data["action_failures"]<100, f"excessive week failures: {data['action_failures']}"
-          print("week facilities", data["facility_counts"], "failures", data["action_failures"])
+          print("week facilities", data["facility_counts"], "farms", data["farms"], "crops", data["cultivated_crops"], "failures", data["action_failures"])
           PY
 
       - name: thirty day multi-seed behavior soak

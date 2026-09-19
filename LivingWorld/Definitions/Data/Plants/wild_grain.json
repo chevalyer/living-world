@@ -1,0 +1,19 @@
+{
+  "id": "wild_grain",
+  "name": "дикий злак",
+  "kind": "grass",
+  "product": "grain",
+  "minTemperature": 4,
+  "maxTemperature": 30,
+  "frostTolerance": -12,
+  "minMoisture": 0.2,
+  "growthDays": 24,
+  "yield": 8,
+  "regrowthDays": 12,
+  "lifespanDays": 220,
+  "color": "#9a945d",
+  "spawnWeight": 2,
+  "optimalTemperature": 16,
+  "shape": "grass",
+  "fruitColor": "#c2a85f"
+}

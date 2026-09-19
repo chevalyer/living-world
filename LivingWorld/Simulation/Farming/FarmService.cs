@@ -42,10 +42,14 @@ public static class FarmService
                 tile.Wall!=0||tile.Door!=0||tile.FarmPlot!=0||tile.Fertility<MinimumFertility||
                 tile.Biome is Biome.Beach or Biome.Marsh or Biome.Mountain or Biome.Alpine)return false;
             if (session.Spatial.Query(p,0).Any(id=>
-                e.Try<PositionComponent>(id) is { } pos&&pos.Tile==p&&
-                (e.Has<PlantComponent>(id)||e.Has<ResourceComponent>(id)||e.Has<BuildingElementComponent>(id)||
-                 e.Has<ConstructionComponent>(id)||e.Has<StorageComponent>(id)||e.Has<FacilityComponent>(id)||
-                 e.Has<FireComponent>(id)||e.Has<FarmPlotComponent>(id)||e.Has<FarmCellComponent>(id))))return false;
+            {
+                if (e.Try<PositionComponent>(id) is not { } pos||pos.Tile!=p)return false;
+                if (e.Try<PlantComponent>(id) is { } plant)
+                    return session.Definitions.Plants[plant.Definition].Kind=="tree";
+                return e.Has<ResourceComponent>(id)||e.Has<BuildingElementComponent>(id)||
+                    e.Has<ConstructionComponent>(id)||e.Has<StorageComponent>(id)||e.Has<FacilityComponent>(id)||
+                    e.Has<FireComponent>(id)||e.Has<FarmPlotComponent>(id)||e.Has<FarmCellComponent>(id);
+            }))return false;
         }
         return true;
     }
@@ -85,12 +89,22 @@ public static class FarmService
         var plot=s.Entities.Try<FarmPlotComponent>(farmCell.Plot);
         if (plot is null||!plot.Cells.Contains(cell)||s.Map[cell].FarmPlot!=farmCell.Plot||s.Map[cell].Tilled)return false;
         if (s.Entities.Get<PositionComponent>(actor).Tile.Distance(cell)>1)return false;
-        return !HasPlant(session,cell);
+        return !session.Spatial.Query(cell,0).Any(id=>
+            e.Try<PlantComponent>(id) is { } plant&&
+            session.Definitions.Plants[plant.Definition].Kind=="tree");
     }
 
     public static bool Till(SimulationSession session,int actor,int cellId,GridPoint cell)
     {
         if (!CanTill(session,actor,cellId,cell))return false;
+        var e=session.State.Entities;
+        foreach (var vegetation in session.Spatial.Query(cell,0)
+                     .Where(id=>e.Try<PlantComponent>(id) is { } plant&&
+                         session.Definitions.Plants[plant.Definition].Kind!="tree").ToArray())
+        {
+            e.Remove(vegetation);
+            session.Spatial.Remove(vegetation);
+        }
         session.State.Map[cell].Tilled=true;
         session.State.Map.MarkVisualDirty(cell);
         session.Inventory.WearTool(actor,"till",.8f);
@@ -138,7 +152,7 @@ public static class FarmService
         var position=e.Try<PositionComponent>(cellId);
         if (farmCell is null||position is null||!session.State.Map.Contains(position.Tile)||
             session.State.Map[position.Tile].FarmPlot!=farmCell.Plot)return "invalid";
-        if (HasPlant(session,position.Tile))return "planted";
+        if (HasCrop(session,position.Tile))return "planted";
         return session.State.Map[position.Tile].Tilled?"tilled":"untilled";
     }
 
@@ -146,6 +160,14 @@ public static class FarmService
     {
         var e=session.State.Entities;
         return session.Spatial.Query(cell,0).Any(id=>e.Has<PlantComponent>(id)&&e.Get<PositionComponent>(id).Tile==cell);
+    }
+
+    public static bool HasCrop(SimulationSession session,GridPoint cell)
+    {
+        var e=session.State.Entities;
+        return session.Spatial.Query(cell,0).Any(id=>
+            e.Try<PlantComponent>(id) is { } plant&&e.Get<PositionComponent>(id).Tile==cell&&
+            session.Definitions.Plants[plant.Definition].Kind=="crop");
     }
 
     public static IEnumerable<GridPoint> Cells(GridPoint origin)

@@ -8,8 +8,15 @@ public sealed class SowAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if (!c.Knowledge.Facts.Contains("farming"))yield break;
-        foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="tilled").Take(4))
-            foreach (var plant in c.Definitions.Plants.Values.Where(x=>x.Kind=="crop"&&x.Seed.Length>0))
+        var availableSeeds=c.Inventory.Select(x=>x.Item.Definition)
+            .Concat(c.OfKind("item").Where(x=>x.Quantity>0).Select(x=>x.Definition))
+            .Concat(c.Storages().SelectMany(x=>x.Items.Where(i=>i.Value>0).Select(i=>i.Key)))
+            .ToHashSet(StringComparer.Ordinal);
+        var crops=c.Definitions.Plants.Values
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&availableSeeds.Contains(x.Seed))
+            .OrderBy(x=>x.Id,StringComparer.Ordinal).ToArray();
+        foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="tilled").Take(3))
+            foreach (var plant in crops)
             {
                 var op=Option(cell.Position, cell.Entity, plant.Id, 20);
                 op.Requires=[new(Item(plant.Seed), 1)];

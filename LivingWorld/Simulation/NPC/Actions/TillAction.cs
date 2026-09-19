@@ -8,7 +8,7 @@ public sealed class TillAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if (!c.Knowledge.Facts.Contains("farming"))yield break;
-        foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="untilled").Take(6))
+        foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="untilled").Take(3))
         {
             var op=Option(cell.Position,cell.Entity,duration:15);
             op.Requires=[new("tool:till",1)];

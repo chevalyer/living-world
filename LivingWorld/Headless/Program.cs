@@ -36,6 +36,11 @@ try
     {
         seed=session.State.Seed, ticks, simulation_tick=session.State.Clock.Tick, date=session.State.Clock.Now, population=session.State.Population, entities=session.State.Entities.Count, rooms=session.State.Rooms.Count, settlement=SettlementAnalyzer.Describe(session), generation_ms=generated, simulation_ms=timer.Elapsed.TotalMilliseconds, hash=saves.Hash(session),
         facilities=session.State.Entities.Store<FacilityComponent>().Count,
+        farms=session.State.Entities.Store<FarmPlotComponent>().Count,
+        farm_cells=session.State.Entities.Store<FarmCellComponent>().Count,
+        tilled_farm_cells=session.State.Map.Tiles.Count(x=>x.FarmPlot!=0&&x.Tilled),
+        cultivated_crops=session.State.Entities.Store<PlantComponent>().All.Count(x=>
+            x.Value.Cultivator!=0&&definitions.Plants[x.Value.Definition].Kind=="crop"),
         facility_counts=session.State.Entities.Store<FacilityComponent>().All
             .GroupBy(x=>x.Value.Definition).OrderBy(x=>x.Key,StringComparer.Ordinal)
             .ToDictionary(g=>g.Key,g=>g.Count()),
