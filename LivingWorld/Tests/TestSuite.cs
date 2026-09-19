@@ -921,15 +921,18 @@ public static class TestSuite
             Assert(loaded.State.Entities.Has<FacilityComponent>(workbench),"facility lost on load");
             Equal("workbench",loaded.State.Entities.Get<FacilityComponent>(workbench).Definition);
         });
-        Test("farming desire expands beyond a single crop", ()=>
+        Test("farming desire expands beyond a single planted farm cell", ()=>
         {
             var(s,id)=Fixture();
             s.State.Entities.Get<KnowledgeComponent>(id).Facts.Add("farming");
-            var crop=Plant(s,new(6,5),"wheat",4);
-            s.State.Entities.Set(crop,new OwnershipComponent { Owner=id });
+            var origin=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,origin);
+            Assert(plot!=0,"farm plot was not created");
+            _=Plant(s,origin,"wheat",4);
             PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
-            var context=ContextBuilder.Create(s,id);
-            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="sown"),"one crop incorrectly satisfied farming");
+            var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
+            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact is "tilled" or "sown"),
+                "one planted farm cell incorrectly satisfied farming");
         });
         Test("metalworking recipes require a real forge facility", ()=>
         {
