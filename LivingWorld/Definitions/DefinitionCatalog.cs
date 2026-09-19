@@ -23,7 +23,16 @@ public sealed class DefinitionCatalog
             if (!Materials.ContainsKey(item.Material) || item.Mass <= 0 || item.Volume <= 0 || item.Durability <= 0) throw new InvalidDataException($"Invalid item: {item.Id}");
             if (item.Coverage is < 0 or > 1 || item.Toxicity is < 0 or > 1) throw new InvalidDataException($"Invalid properties: {item.Id}");
         }
-        foreach (var plant in Plants.Values) if (!Items.ContainsKey(plant.Product) || plant.GrowthDays <= 0 || plant.RegrowthDays <= 0) throw new InvalidDataException($"Invalid plant: {plant.Id}");
+        foreach (var plant in Plants.Values)
+        {
+            if (!Items.ContainsKey(plant.Product) || plant.GrowthDays <= 0 || plant.RegrowthDays <= 0)
+                throw new InvalidDataException($"Invalid plant: {plant.Id}");
+            if (plant.Kind=="crop" && (string.IsNullOrWhiteSpace(plant.Seed) || !Items.ContainsKey(plant.Seed) || plant.SeedYield<=0))
+                throw new InvalidDataException($"Crop has no valid seed: {plant.Id}");
+        }
+        var cropSeeds=Plants.Values.Where(x=>x.Kind=="crop").Select(x=>x.Seed).ToArray();
+        if (cropSeeds.Length!=cropSeeds.Distinct(StringComparer.Ordinal).Count())
+            throw new InvalidDataException("Crop seed definitions must be unique.");
         foreach (var recipe in Recipes.Values) if (!Items.ContainsKey(recipe.Output) || recipe.Inputs.Count == 0 || recipe.Inputs.Any(x => !Items.ContainsKey(x.Key) || x.Value <= 0)) throw new InvalidDataException($"Invalid recipe: {recipe.Id}");
         foreach (var building in Buildings.Values) if (!Materials.ContainsKey(building.Material) || !Items.ContainsKey(building.Resource) || building.Size < 3) throw new InvalidDataException($"Invalid building: {building.Id}");
         foreach (var facility in Facilities.Values)

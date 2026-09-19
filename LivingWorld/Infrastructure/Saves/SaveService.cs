@@ -67,7 +67,11 @@ public sealed class SaveService
         }
         var snapshot=JsonSerializer.Deserialize<WorldSnapshot>(json, Options)??throw new InvalidDataException("Пустое сохранение.");
         if(snapshot.DefinitionManifest.Count==0)
-        {if(snapshot.DefinitionsFingerprint!=definitions.Fingerprint)throw new InvalidDataException("Определения изменились; нужна миграция.");}
+        {
+            if(snapshot.DefinitionsFingerprint!=definitions.Fingerprint&&
+               snapshot.DefinitionsFingerprint!=DefinitionFingerprint.LegacyFingerprint(definitions))
+                throw new InvalidDataException("Определения изменились; нужна миграция.");
+        }
         else
         {
             if(DefinitionFingerprint.OfManifest(snapshot.DefinitionManifest)!=snapshot.DefinitionsFingerprint)throw new InvalidDataException("Нарушена целостность определений сохранения.");
@@ -82,6 +86,18 @@ public sealed class SaveService
                     var id=entry.Key["recipe:".Length..];
                     if(definitions.Recipes.TryGetValue(id,out var recipe)&&
                        DefinitionFingerprint.LegacyRecipeHash(recipe)==entry.Value)continue;
+                }
+                if(entry.Key.StartsWith("building:",StringComparison.Ordinal))
+                {
+                    var id=entry.Key["building:".Length..];
+                    if(definitions.Buildings.TryGetValue(id,out var building)&&
+                       DefinitionFingerprint.LegacyBuildingHash(building)==entry.Value)continue;
+                }
+                if(entry.Key.StartsWith("plant:",StringComparison.Ordinal))
+                {
+                    var id=entry.Key["plant:".Length..];
+                    if(definitions.Plants.TryGetValue(id,out var plant)&&
+                       DefinitionFingerprint.LegacyPlantHash(plant)==entry.Value)continue;
                 }
                 throw new InvalidDataException("Изменено старое определение "+entry.Key+"; нужна миграция.");
             }

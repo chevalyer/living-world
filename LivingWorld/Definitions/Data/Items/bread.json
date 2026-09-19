@@ -9,7 +9,8 @@
   "water": 0.15,
   "shelfLifeDays": 16,
   "tags": [
-    "food"
+    "food",
+    "cooked"
   ],
   "recipes": [
     {

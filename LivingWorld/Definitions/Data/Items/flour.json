@@ -22,6 +22,45 @@
       "knowledge": "farming",
       "capability": "milling",
       "minutes": 22
+    },
+    {
+      "id": "flour_barley",
+      "name": "смолоть ячменную муку",
+      "operation": "grind",
+      "inputs": {
+        "barley_grain": 2
+      },
+      "count": 1,
+      "skill": "farming",
+      "knowledge": "farming",
+      "capability": "milling",
+      "minutes": 22
+    },
+    {
+      "id": "flour_oat",
+      "name": "смолоть овсяную муку",
+      "operation": "grind",
+      "inputs": {
+        "oat_grain": 2
+      },
+      "count": 1,
+      "skill": "farming",
+      "knowledge": "farming",
+      "capability": "milling",
+      "minutes": 22
+    },
+    {
+      "id": "flour_millet",
+      "name": "смолоть просяную муку",
+      "operation": "grind",
+      "inputs": {
+        "millet_grain": 2
+      },
+      "count": 1,
+      "skill": "farming",
+      "knowledge": "farming",
+      "capability": "milling",
+      "minutes": 22
     }
   ]
 }
