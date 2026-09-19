@@ -44,8 +44,8 @@ public static class FarmService
             if (session.Spatial.Query(p,0).Any(id=>
                 e.Try<PositionComponent>(id) is { } pos&&pos.Tile==p&&
                 (e.Has<PlantComponent>(id)||e.Has<ResourceComponent>(id)||e.Has<BuildingElementComponent>(id)||
-                 e.Has<ConstructionComponent>(id)||e.Has<StorageComponent>(id)||e.Has<FireComponent>(id)||
-                 e.Has<FarmPlotComponent>(id)||e.Has<FarmCellComponent>(id))))return false;
+                 e.Has<ConstructionComponent>(id)||e.Has<StorageComponent>(id)||e.Has<FacilityComponent>(id)||
+                 e.Has<FireComponent>(id)||e.Has<FarmPlotComponent>(id)||e.Has<FarmCellComponent>(id))))return false;
         }
         return true;
     }

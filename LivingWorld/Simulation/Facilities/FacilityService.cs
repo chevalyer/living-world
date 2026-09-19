@@ -28,11 +28,11 @@ public static class FacilityService
         var candidates=new List<GridPoint>();
         if(definition.Placement=="indoor")
         {
-            var radius=Math.Max(1,session.Definitions.Buildings[home.Definition].Size/2-1);
-            for(var dy=-radius;dy<=radius;dy++)
-            for(var dx=-radius;dx<=radius;dx++)
+            IEnumerable<GridPoint> interior=home.Interior.Count>0
+                ?home.Interior
+                :LegacyInterior(center,session.Definitions.Buildings[home.Definition].Size);
+            foreach(var p in interior)
             {
-                var p=center+new GridPoint(dx,dy);
                 if(!s.Map.Contains(p))continue;
                 var tile=s.Map[p];
                 if(!s.Map.Walkable(p)||tile.Floor==0||tile.Roof==0||tile.Room==0)continue;
@@ -51,7 +51,7 @@ public static class FacilityService
                 var p=center+new GridPoint(dx,dy);
                 if(!s.Map.Contains(p))continue;
                 var tile=s.Map[p];
-                if(!s.Map.Walkable(p)||tile.Water!=WaterKind.None||tile.Roof!=0||tile.Floor!=0||
+                if(!s.Map.Walkable(p)||tile.Water!=WaterKind.None||tile.Roof!=0||tile.Floor!=0||tile.FarmPlot!=0||
                    tile.Moisture<definition.MinMoisture||Occupied(session,p))continue;
                 if(!session.Pathfinder.CanReach(actorPosition,p,0))continue;
                 candidates.Add(p);
@@ -73,11 +73,12 @@ public static class FacilityService
         var center=e.Get<PositionComponent>(family.HomeProject).Tile;
         if(definition.Placement=="indoor")
         {
-            var radius=Math.Max(1,session.Definitions.Buildings[home.Definition].Size/2-1);
-            if(Math.Abs(position.X-center.X)>radius||Math.Abs(position.Y-center.Y)>radius||
-               tile.Floor==0||tile.Roof==0||tile.Room==0)return false;
+            var inside=home.Interior.Count>0
+                ?home.Interior.Contains(position)
+                :LegacyInterior(center,session.Definitions.Buildings[home.Definition].Size).Contains(position);
+            if(!inside||tile.Floor==0||tile.Roof==0||tile.Room==0)return false;
         }
-        else if(tile.Roof!=0||tile.Floor!=0||position.Distance(center)>14)return false;
+        else if(tile.Roof!=0||tile.Floor!=0||tile.FarmPlot!=0||position.Distance(center)>14)return false;
         return session.Pathfinder.CanReach(e.Get<PositionComponent>(actor).Tile,position,0);
     }
 
@@ -107,10 +108,19 @@ public static class FacilityService
         return id;
     }
 
+    private static IEnumerable<GridPoint> LegacyInterior(GridPoint center,int size)
+    {
+        var radius=size/2;
+        for(var dy=-radius+1;dy<radius;dy++)
+        for(var dx=-radius+1;dx<radius;dx++)
+            yield return center+new GridPoint(dx,dy);
+    }
+
     private static bool Occupied(SimulationSession session,GridPoint p)=>session.Spatial.Query(p,0).Any(id=>
         session.State.Entities.Get<PositionComponent>(id).Tile==p&&
         (session.State.Entities.Has<FacilityComponent>(id)||session.State.Entities.Has<StorageComponent>(id)||
          session.State.Entities.Has<IdentityComponent>(id)||session.State.Entities.Has<FireComponent>(id)||
          session.State.Entities.Has<ResourceComponent>(id)||session.State.Entities.Has<PlantComponent>(id)||
-         session.State.Entities.Has<ConstructionComponent>(id)));
+         session.State.Entities.Has<ConstructionComponent>(id)||session.State.Entities.Has<FarmCellComponent>(id)||
+         session.State.Entities.Has<FarmPlotComponent>(id)));
 }

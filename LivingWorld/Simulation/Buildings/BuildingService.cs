@@ -169,8 +169,8 @@ public static class BuildingService
         {
             var position=e.Try<PositionComponent>(id);
             if (position is null||!footprint.Contains(position.Tile))continue;
-            if (e.Has<IdentityComponent>(id)&&id!=actor||e.Has<StorageComponent>(id)||e.Has<FireComponent>(id)||
-                e.Has<ResourceComponent>(id))return false;
+            if (e.Has<IdentityComponent>(id)&&id!=actor||e.Has<StorageComponent>(id)||e.Has<FacilityComponent>(id)||
+                e.Has<FireComponent>(id)||e.Has<ResourceComponent>(id))return false;
             if (e.Try<PlantComponent>(id) is { } plant&&session.Definitions.Plants[plant.Definition].Kind=="tree")return false;
         }
 
