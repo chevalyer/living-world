@@ -533,7 +533,8 @@ public partial class SimulationHud : CanvasLayer
     {
         var text=new StringBuilder();
         text.AppendLine($"центр  {settlement.Center.X}, {settlement.Center.Y}");
-        text.AppendLine($"территория  {settlement.MaxX-settlement.MinX+1} × {settlement.MaxY-settlement.MinY+1} клеток");
+        var cells=settlement.Areas.Count*SettlementAnalyzer.SettlementCellSize*SettlementAnalyzer.SettlementCellSize;
+        text.AppendLine($"территория  {settlement.Areas.Count} блоков 7×7 · {cells} клеток");
         Section(text,"население");
         text.AppendLine($"жителей  {settlement.Members}");
         text.AppendLine($"семей  {settlement.Families}");
