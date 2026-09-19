@@ -14,6 +14,22 @@ public sealed class ResourceEvaluator : ISituationEvaluator
         var calories=(int)c.Inventory.Sum(x=>c.Definitions.Items[x.Item.Definition].Calories*Math.Max(0,x.Item.Freshness));
         if(calories<2400)yield return new("food.reserve","небольшой запас пищи",.3f*(1-calories/2400f),2400);
 
+        var storages=c.Storages().ToArray();
+        if(storages.Length>0)
+        {
+            var storedCalories=(int)storages.Sum(storage=>storage.Items.Sum(item=>
+                c.Definitions.Items.TryGetValue(item.Key,out var definition)?definition.Calories*item.Value:0));
+            var household=1+(c.Family.Partner!=0?1:0)+c.Family.Children.Count;
+            // Needs consume about 960 definition-calories per person/day. A 45-day household
+            // reserve lets harvests bridge cold periods instead of being eaten only hand-to-mouth.
+            var targetStoredCalories=Math.Max(43200,household*43200);
+            if(storedCalories<targetStoredCalories)
+            {
+                var missing=1-storedCalories/(float)targetStoredCalories;
+                yield return new("food.stocked","запас пищи семьи на холодный период",.35f+.35f*missing);
+            }
+        }
+
         if(c.Knowledge.Facts.Contains("farming"))
         {
             var farmCells=c.Known.Where(x=>x.Kind=="farm_cell"&&x.UnreachableUntil<=c.Tick).ToArray();

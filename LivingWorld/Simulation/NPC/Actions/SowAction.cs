@@ -8,14 +8,15 @@ public sealed class SowAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if (!c.Knowledge.Facts.Contains("farming"))yield break;
-        var availableSeeds=c.Inventory.Select(x=>x.Item.Definition).ToHashSet(StringComparer.Ordinal);
+        var availableSeeds=c.Inventory.GroupBy(x=>x.Item.Definition)
+            .ToDictionary(g=>g.Key,g=>g.Count(),StringComparer.Ordinal);
         foreach(var item in c.Known.Where(x=>x.Kind=="item"&&x.Quantity>0&&x.UnreachableUntil<=c.Tick))
-            availableSeeds.Add(item.Product);
+            availableSeeds[item.Product]=availableSeeds.GetValueOrDefault(item.Product)+item.Quantity;
         foreach(var storage in c.Storages())
             foreach(var item in storage.Items.Where(x=>x.Value>0))
-                availableSeeds.Add(item.Key);
+                availableSeeds[item.Key]=availableSeeds.GetValueOrDefault(item.Key)+item.Value;
         var crops=c.Definitions.Plants.Values
-            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&availableSeeds.Contains(x.Seed)&&c.Definitions.Items.ContainsKey(x.Seed))
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&availableSeeds.GetValueOrDefault(x.Seed)>=2&&c.Definitions.Items.ContainsKey(x.Seed))
             .OrderByDescending(x=>c.Definitions.Items[x.Product].Calories*x.Yield/Math.Max(1,x.GrowthDays))
             .ThenBy(x=>x.Id,StringComparer.Ordinal)
             .ToArray();
@@ -24,7 +25,8 @@ public sealed class SowAction : SimAction
             {
                 if(cell.Temperature<plant.MinTemperature||cell.Temperature>plant.MaxTemperature)continue;
                 var op=Option(cell.Position, cell.Entity, plant.Id, 20);
-                op.Requires=[new(Item(plant.Seed), 1)];
+                // Keep one physical seed in reserve so a failed season cannot erase the crop from the settlement.
+                op.Requires=[new(Item(plant.Seed), 2)];
                 op.Effects=[new(Item(plant.Seed), -1), new("sown", 1, true)];
                 if(c.Definitions.Items[plant.Product].Calories>0)op.Effects.Add(new("food.sown",1,true));
                 yield return op;

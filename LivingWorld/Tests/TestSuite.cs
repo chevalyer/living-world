@@ -151,35 +151,35 @@ public static class TestSuite
         });
         Test("sowing consumes the crop specific seed", ()=>
         {
-            var(s,id)=Fixture(); Give(s,id,"wheat_seed"); Give(s,id,"carrot_seed");
+            var(s,id)=Fixture(); Give(s,id,"wheat_seed"); Give(s,id,"wheat_seed"); Give(s,id,"carrot_seed");
             var cell=new GridPoint(5,5);
             var plot=FarmService.Start(s,id,cell);
             Assert(plot!=0,"farm plot was not created");
             s.State.Map[cell].Tilled=true;
             var farmCell=FarmCell(s,plot,cell);
             Assert(new SowAction().Execute(s,id,new(){Target=farmCell,Position=cell,Argument="wheat"}),"wheat seed was not sown");
-            Equal(0,s.Inventory.Count(id,"wheat_seed"));
+            Equal(1,s.Inventory.Count(id,"wheat_seed"));
             Equal(1,s.Inventory.Count(id,"carrot_seed"));
             Assert(s.State.Entities.Store<PlantComponent>().All.Any(x=>x.Value.Definition=="wheat"&&x.Value.Cultivator==id),
                 "wrong crop was planted");
         });
         Test("a different crop seed cannot substitute for wheat seed", ()=>
         {
-            var(s,id)=Fixture(); Give(s,id,"carrot_seed");
+            var(s,id)=Fixture(); Give(s,id,"carrot_seed"); Give(s,id,"carrot_seed");
             var cell=new GridPoint(5,5);
             var plot=FarmService.Start(s,id,cell);
             Assert(plot!=0,"farm plot was not created");
             s.State.Map[cell].Tilled=true;
             var farmCell=FarmCell(s,plot,cell);
             Assert(!new SowAction().Execute(s,id,new(){Target=farmCell,Position=cell,Argument="wheat"}),"carrot seed planted wheat");
-            Equal(1,s.Inventory.Count(id,"carrot_seed"));
+            Equal(2,s.Inventory.Count(id,"carrot_seed"));
         });
         Test("crops cannot be sown outside farm plots", ()=>
         {
-            var(s,id)=Fixture(); Give(s,id,"wheat_seed");
+            var(s,id)=Fixture(); Give(s,id,"wheat_seed"); Give(s,id,"wheat_seed");
             var p=s.State.Entities.Get<PositionComponent>(id).Tile;
             Assert(!new SowAction().Execute(s,id,new(){Position=p,Argument="wheat"}),"crop was sown on ordinary ground");
-            Equal(1,s.Inventory.Count(id,"wheat_seed"));
+            Equal(2,s.Inventory.Count(id,"wheat_seed"));
         });
         Test("farm soil must be tilled with a tilling tool", ()=>
         {
@@ -281,6 +281,7 @@ public static class TestSuite
             Assert(plot!=0,"farm plot was not created");
             s.State.Map[cell].Tilled=true;
             _=s.Inventory.Spawn("wheat_seed",cell);
+            _=s.Inventory.Spawn("wheat_seed",cell);
             PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
             var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
             var options=s.Actions.All.Where(action=>!action.RequiresWork||context.CanWork)
@@ -299,6 +300,57 @@ public static class TestSuite
                 "missing food was treated as executable");
             Give(s,id,"grain");
             Assert(action.CanExecute(s,id,step,out _),"available fresh food was rejected");
+        });
+        Test("sowing preserves one physical seed as reserve", ()=>
+        {
+            var(s,id)=Fixture();
+            Give(s,id,"wheat_seed"); Give(s,id,"wheat_seed");
+            var origin=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,origin);
+            Assert(plot!=0,"farm plot was not created");
+            s.State.Map[origin].Tilled=true;
+            var first=FarmCell(s,plot,origin);
+            Assert(new SowAction().Execute(s,id,new(){Target=first,Position=origin,Argument="wheat"}),
+                "first sow with a reserve failed");
+            Equal(1,s.Inventory.Count(id,"wheat_seed"));
+            var secondPoint=new GridPoint(6,5);
+            s.State.Map[secondPoint].Tilled=true;
+            var second=FarmCell(s,plot,secondPoint);
+            Assert(!new SowAction().Execute(s,id,new(){Target=second,Position=secondPoint,Argument="wheat"}),
+                "last physical seed was consumed");
+            Equal(1,s.Inventory.Count(id,"wheat_seed"));
+        });
+        Test("founders receive a renewable food seed reserve", ()=>
+        {
+            var state=new WorldGenerator().Generate(D,31,48,6);
+            var foodSeeds=D.Plants.Values.Where(x=>x.Kind=="crop"&&D.Items[x.Product].Calories>0)
+                .Select(x=>x.Seed).ToHashSet(StringComparer.Ordinal);
+            foreach(var actor in state.Entities.Store<IdentityComponent>().Ids())
+            {
+                var groups=state.Entities.Get<InventoryComponent>(actor).Items
+                    .Select(item=>state.Entities.Get<ItemComponent>(item).Definition)
+                    .Where(foodSeeds.Contains)
+                    .GroupBy(x=>x,StringComparer.Ordinal);
+                Assert(groups.Any(g=>g.Count()>=3),"founder has no renewable food seed reserve");
+            }
+        });
+        Test("planner can harvest food into household storage", ()=>
+        {
+            var(s,id)=Fixture();
+            var storage=StorageService.Create(s,new(6,5),0);
+            _=storage;
+            _=Plant(s,new(8,5),"wheat",3);
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
+            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="food.stocked"),
+                "empty household storage created no food reserve motive");
+            var options=s.Actions.All.Where(action=>!action.RequiresWork||context.CanWork)
+                .SelectMany(action=>action.Options(context)).ToList();
+            var plan=s.Planner.Find(context,options,new DesiredState("food.stocked","test",1));
+            Assert(plan is not null,"planner could not move ripe food into storage");
+            Assert(plan!.Steps.Any(x=>x.Action=="harvest"),"food stock plan did not harvest");
+            Assert(plan.Steps.Any(x=>x.Action=="pickup"&&x.Argument=="grain"),"food stock plan did not collect harvest");
+            Assert(plan.Steps.Any(x=>x.Action=="deposit"&&x.Argument=="grain"),"food stock plan did not deposit food");
         });
         Test("farms and building clearance cannot overlap", ()=>
         {

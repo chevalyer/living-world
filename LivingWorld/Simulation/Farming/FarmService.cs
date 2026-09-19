@@ -115,7 +115,7 @@ public static class FarmService
         var plot=s.Entities.Try<FarmPlotComponent>(farmCell.Plot);
         if (plot is null||!plot.Cells.Contains(cell)||s.Map[cell].FarmPlot!=farmCell.Plot||!s.Map[cell].Tilled||
             plant.Kind!="crop"||plant.Seed.Length==0||!session.Definitions.Items.ContainsKey(plant.Seed)||
-            session.Inventory.Count(actor,plant.Seed)<1||HasPlant(session,cell))return false;
+            session.Inventory.Count(actor,plant.Seed)<2||HasPlant(session,cell))return false;
         if (s.Entities.Get<PositionComponent>(actor).Tile.Distance(cell)>1)return false;
         var air=EnvironmentQueries.Air(s,cell);
         return air>=plant.MinTemperature&&air<=plant.MaxTemperature;
