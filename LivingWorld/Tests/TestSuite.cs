@@ -165,11 +165,57 @@ public static class TestSuite
         });
         Test("closed roofed walls form a room", ()=>
         {
-            var(s, id)=Fixture(); var project=BuildHome(s, id); new RoomSystem().Update(s); Assert(s.State.Rooms.Count>0, "no room"); Assert(s.State.Entities.Get<ConstructionComponent>(project).Finished, "unfinished"); Assert(s.State.Map.Walkable(new(5, 7)), "door blocks movement");
+            var(s, id)=Fixture(); var project=BuildHome(s, id); new RoomSystem().Update(s);
+            var construction=s.State.Entities.Get<ConstructionComponent>(project);
+            Assert(s.State.Rooms.Count>0, "no room");
+            Assert(construction.Finished, "unfinished");
+            Assert(s.State.Map.Walkable(construction.Door), "door blocks movement");
         });
         Test("opening wall invalidates room", ()=>
         {
-            var(s, id)=Fixture(); BuildHome(s, id); new RoomSystem().Update(s); s.State.Map[new(3, 5)].Wall=0; s.RoomsDirty=true; new RoomSystem().Update(s); Equal(0, s.State.Rooms.Count);
+            var(s, id)=Fixture(); var project=BuildHome(s, id); new RoomSystem().Update(s);
+            var wall=s.State.Entities.Get<ConstructionComponent>(project).Elements.First(x=>x.Kind=="wall").Position;
+            s.State.Map[wall].Wall=0; s.RoomsDirty=true; new RoomSystem().Update(s); Equal(0, s.State.Rooms.Count);
+        });
+        Test("procedural home layouts stay bounded connected and useful", ()=>
+        {
+            var(s,id)=Fixture();
+            var definition=D.Buildings["wooden_cabin"] with
+            {
+                MinWidth=7,MaxWidth=7,MinHeight=7,MaxHeight=7,MaxInteriorArea=25,ShapeVariety=1
+            };
+            var layout=BuildingService.CreateLayout(s,id,new(11,11),definition);
+            Assert(layout.Interior.Count>=6&&layout.Interior.Count<=definition.MaxInteriorArea,"invalid interior size");
+            Assert(layout.Interior.Count<25,"shape stayed a full template rectangle");
+            Assert(Connected(layout.Interior),"interior is disconnected");
+            Assert(layout.Boundary.All(p=>layout.Interior.Any(i=>i.Distance(p)==1)),"meaningless wall without interior");
+        });
+        Test("home doors can face different sides", ()=>
+        {
+            var(s,id)=Fixture();
+            var definition=D.Buildings["wooden_cabin"] with { MinWidth=7,MaxWidth=7,MinHeight=7,MaxHeight=7,ShapeVariety=0 };
+            var center=new GridPoint(10,10);
+            var sides=new HashSet<string>();
+            foreach(var actorPosition in new[]{new GridPoint(10,1),new GridPoint(18,10),new GridPoint(10,18),new GridPoint(2,10)})
+            {
+                s.State.Entities.Get<PositionComponent>(id).Tile=actorPosition;
+                var layout=BuildingService.CreateLayout(s,id,center,definition);
+                var minX=layout.Footprint.Min(p=>p.X); var maxX=layout.Footprint.Max(p=>p.X);
+                var minY=layout.Footprint.Min(p=>p.Y); var maxY=layout.Footprint.Max(p=>p.Y);
+                sides.Add(layout.Door.X==minX?"left":layout.Door.X==maxX?"right":
+                    layout.Door.Y==minY?"top":layout.Door.Y==maxY?"bottom":"other");
+            }
+            Assert(sides.Count>=3,"doors stayed locked to one side");
+        });
+        Test("building clearance prevents houses from touching or blocking entrances", ()=>
+        {
+            var(s,id)=Fixture();
+            var first=BuildingService.Start(s,id,new(8,8),"wooden_cabin");
+            Assert(first!=0,"first project failed");
+            var project=s.State.Entities.Get<ConstructionComponent>(first);
+            Assert(project.Clearance.Contains(project.DoorOutside),"entrance approach is not reserved");
+            var nearby=BuildingService.CreateLayout(s,id,new(12,8),D.Buildings["wooden_cabin"]);
+            Assert(!BuildingService.CanPlace(s,id,nearby),"nearby house ignored reserved clearance");
         });
         Test("communal stock retains physical ownership", ()=>
         {
@@ -551,6 +597,23 @@ public static class TestSuite
         s.Spatial.Add(id, p);
         return id;
     }
+    private static bool Connected(IEnumerable<GridPoint> cells)
+    {
+        var set=cells.ToHashSet();
+        if(set.Count==0)return false;
+        var seen=new HashSet<GridPoint>();
+        var queue=new Queue<GridPoint>();
+        var first=set.First();
+        seen.Add(first); queue.Enqueue(first);
+        while(queue.TryDequeue(out var current))
+            foreach(var direction in GridPoint.Cardinal)
+            {
+                var next=current+direction;
+                if(set.Contains(next)&&seen.Add(next))queue.Enqueue(next);
+            }
+        return seen.Count==set.Count;
+    }
+
     private static int FinishedProject(SimulationSession s, GridPoint position)
     {
         var id=s.State.Entities.Create();
