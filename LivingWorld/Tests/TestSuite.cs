@@ -143,6 +143,26 @@ public static class TestSuite
             var(s, id)=Fixture(); s.State.Entities.Get<BodyComponent>(id).Strength=0; Assert(!new BuildAction().CanExecute(s, id, new(), out _), "zero strength ignored");
         });
         Test("plants stop growing in cold", ()=>Equal(0f, PlantSystem.GrowthRate(D.Plants["raspberry_bush"], -10, .8f, 1)));
+        Test("wild grain is forage, not a cultivated crop", ()=>
+        {
+            var wild=D.Plants["wild_grain"];
+            Equal("grass",wild.Kind);
+            Assert(D.Items[wild.Product].Calories>0,"wild grain is not edible");
+            Assert(wild.Seed.Length==0,"wild forage unexpectedly has a crop seed");
+        });
+        Test("tilling clears low vegetation from a farm cell", ()=>
+        {
+            var(s,id)=Fixture();
+            var cell=new GridPoint(5,5);
+            var grass=Plant(s,cell,"wild_flax",3);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"low vegetation blocked farm placement");
+            var farmCell=FarmCell(s,plot,cell);
+            Give(s,id,"stone_hoe");
+            Assert(new TillAction().Execute(s,id,new(){Target=farmCell,Position=cell}),"tilling low vegetation failed");
+            Assert(!s.State.Entities.Exists(grass),"tilling did not clear low vegetation");
+            Assert(s.State.Map[cell].Tilled,"cleared farm cell was not tilled");
+        });
         Test("every crop has its own physical seed item", ()=>
         {
             var crops=D.Plants.Values.Where(x=>x.Kind=="crop").ToArray();
