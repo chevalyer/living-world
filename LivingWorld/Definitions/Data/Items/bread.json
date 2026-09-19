@@ -1,0 +1,27 @@
+{
+  "id": "bread",
+  "name": "хлеб",
+  "material": "organic",
+  "mass": 0.5,
+  "volume": 0.65,
+  "calories": 820,
+  "water": 0.06,
+  "shelfLifeDays": 5,
+  "tags": [
+    "food",
+    "cooked"
+  ],
+  "recipes": [
+    {
+      "id": "bread",
+      "name": "испечь хлеб",
+      "inputs": {
+        "flour": 2
+      },
+      "operation": "heat",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 50
+    }
+  ]
+}

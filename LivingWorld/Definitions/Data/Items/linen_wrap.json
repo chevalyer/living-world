@@ -1,0 +1,26 @@
+{
+  "id": "linen_wrap",
+  "name": "льняная накидка",
+  "material": "flax",
+  "mass": 0.55,
+  "volume": 0.8,
+  "slots": [
+    "outer_torso"
+  ],
+  "coverage": 0.38,
+  "thickness": 0.7,
+  "comfort": 0.95,
+  "recipes": [
+    {
+      "id": "linen_wrap",
+      "name": "сшить льняную накидку",
+      "inputs": {
+        "cloth": 2
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 45
+    }
+  ]
+}

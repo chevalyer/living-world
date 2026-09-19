@@ -1,0 +1,22 @@
+{
+  "id": "onion",
+  "name": "лук",
+  "kind": "crop",
+  "product": "onion",
+  "seed": "onion_seed",
+  "seedYield": 2,
+  "minTemperature": 6,
+  "maxTemperature": 30,
+  "frostTolerance": -4,
+  "minMoisture": 0.3,
+  "growthDays": 60,
+  "yield": 8,
+  "regrowthDays": 22,
+  "lifespanDays": 185,
+  "color": "#718c52",
+  "fruitColor": "#c5b084",
+  "spawnWeight": 0.05,
+  "optimalTemperature": 16,
+  "shape": "grass",
+  "harvestRemovesPlant": true
+}

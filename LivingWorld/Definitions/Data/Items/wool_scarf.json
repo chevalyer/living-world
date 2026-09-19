@@ -1,0 +1,26 @@
+{
+  "id": "wool_scarf",
+  "name": "шерстяной шарф",
+  "material": "wool",
+  "mass": 0.22,
+  "volume": 0.3,
+  "slots": [
+    "neck"
+  ],
+  "coverage": 0.08,
+  "thickness": 1.45,
+  "comfort": 0.95,
+  "recipes": [
+    {
+      "id": "wool_scarf",
+      "name": "связать шерстяной шарф",
+      "inputs": {
+        "wool_yarn": 2
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 30
+    }
+  ]
+}

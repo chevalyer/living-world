@@ -8,5 +8,8 @@
   "regrowthDays": 18,
   "lifespanDays": 210,
   "color": "#bfa769",
-  "yield": 14
+  "yield": 14,
+  "seed": "wheat_seed",
+  "seedYield": 3,
+  "harvestRemovesPlant": true
 }

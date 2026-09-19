@@ -1,0 +1,25 @@
+{
+  "id": "leather_strip",
+  "name": "кожаная полоска",
+  "material": "leather",
+  "mass": 0.15,
+  "volume": 0.2,
+  "tags": [
+    "material"
+  ],
+  "recipes": [
+    {
+      "id": "leather_strip",
+      "name": "нарезать кожаные полоски",
+      "inputs": {
+        "leather": 1
+      },
+      "operation": "cut",
+      "count": 3,
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 20,
+      "tool": "cut"
+    }
+  ]
+}

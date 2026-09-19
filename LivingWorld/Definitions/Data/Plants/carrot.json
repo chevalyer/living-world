@@ -1,0 +1,22 @@
+{
+  "id": "carrot",
+  "name": "морковь",
+  "kind": "crop",
+  "product": "carrot",
+  "seed": "carrot_seed",
+  "seedYield": 2,
+  "minTemperature": 5,
+  "maxTemperature": 28,
+  "frostTolerance": -4,
+  "minMoisture": 0.35,
+  "growthDays": 55,
+  "yield": 8,
+  "regrowthDays": 22,
+  "lifespanDays": 170,
+  "color": "#6d8a4b",
+  "fruitColor": "#d98345",
+  "spawnWeight": 0.05,
+  "optimalTemperature": 15,
+  "shape": "round",
+  "harvestRemovesPlant": true
+}
