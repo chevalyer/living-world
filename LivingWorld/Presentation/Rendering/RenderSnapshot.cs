@@ -6,7 +6,7 @@ using LivingWorld.Simulation;
 namespace LivingWorld.Presentation;
 
 // These records contain only values and read-only collections. They never expose live components.
-public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility);
+public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility, bool Farm, bool Tilled);
 public readonly record struct RenderEntity(int Id, GridPoint Tile, string Kind, string Color, string Accent,
     string Shape, float Growth, float Yield);
 public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action,
@@ -15,9 +15,10 @@ public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, 
 public readonly record struct RenderMemory(GridPoint Tile, float Confidence);
 public sealed record RenderChunk(int Key, int X, int Y, long Revision,
     ReadOnlyCollection<RenderTile> Tiles, ReadOnlyCollection<RenderEntity> Entities);
+public readonly record struct RenderSettlementArea(int X,int Y);
 public sealed record RenderSettlement(
     int Anchor, string Name, GridPoint Center,
-    int MinX, int MinY, int MaxX, int MaxY,
+    ReadOnlyCollection<RenderSettlementArea> Areas,
     int Homes, int Members, int Families, float FoodCalories, int Projects, int Facilities,
     ReadOnlyCollection<string> Capabilities, ReadOnlyCollection<string> Specializations);
 public sealed record RenderRoom(int Id, ReadOnlyCollection<GridPoint> Tiles);
@@ -72,8 +73,9 @@ public sealed class RenderSnapshotBuilder
             _population = s.Population;
             _homes = s.Entities.Store<ConstructionComponent>().All.Count(x => x.Value.Finished);
             _settlements = SettlementAnalyzer.DescribeAll(session).Select(x=>new RenderSettlement(
-                x.Anchor,x.Name,x.Center,x.MinX,x.MinY,x.MaxX,x.MaxY,x.Homes,x.Members,x.Families,
-                x.FoodCalories,x.Projects,x.Facilities,Array.AsReadOnly(x.Capabilities.ToArray()),
+                x.Anchor,x.Name,x.Center,
+                Array.AsReadOnly(x.Areas.Select(area=>new RenderSettlementArea(area.X,area.Y)).ToArray()),
+                x.Homes,x.Members,x.Families,x.FoodCalories,x.Projects,x.Facilities,Array.AsReadOnly(x.Capabilities.ToArray()),
                 Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
             _worldText = DescribeWorld(session);
             _systemsText = DescribeSystems(session);
@@ -109,7 +111,7 @@ public sealed class RenderSnapshotBuilder
         {
             path = s.Entities.Get<MovementComponent>(request.Selected).Path.ToArray();
             memories = s.Entities.Get<MemoryComponent>(request.Selected).Observations
-                .Where(o => o.Kind is "water" or "plant").Select(o => new RenderMemory(o.Position, o.Confidence)).ToArray();
+                .Where(o => o.Kind is "water" or "plant" or "farm_cell").Select(o => new RenderMemory(o.Position, o.Confidence)).ToArray();
         }
         return new(generation, ++_sequence, now, s.Clock.Tick, s.Clock.Now, s.Seed, map.Width, map.Height,
             s.Start, s.Weather.Sunlight, s.Clock.Season, EnvironmentQueries.Air(s, s.Start), s.Weather.Rain > .1f,
@@ -128,6 +130,7 @@ public sealed class RenderSnapshotBuilder
         {
             "chop"=>"chop",
             "mine" or "break_ice"=>"mine",
+            "till"=>"till",
             _=>""
         };
         if(tool.Length>0)
@@ -152,7 +155,7 @@ public sealed class RenderSnapshotBuilder
         }
         else if(step.Action=="trade")definition=step.Argument.Split('|',2)[0];
         else if(step.Action=="sow"&&session.Definitions.Plants.TryGetValue(step.Argument,out var crop))
-            definition=crop.Product;
+            definition=crop.Seed;
         else if(step.Action=="build_facility"&&session.Definitions.Facilities.TryGetValue(step.Argument,out var facility))
             definition=facility.Inputs.Keys.FirstOrDefault()??"";
         else if(step.Action is "eat" or "give" or "care" or "deposit" or "refuel" or "light_fire" or "repair")
@@ -160,7 +163,7 @@ public sealed class RenderSnapshotBuilder
 
         if(definition.Length==0||!session.Definitions.Items.TryGetValue(definition,out var item))return ("","","");
         var shape=step.Action=="sow"?"seed":
-            tool=="chop"?"axe":tool=="mine"?"pick":
+            tool=="chop"?"axe":tool=="mine"?"pick":tool=="till"?"tool":
             item.Tags.Contains("construction",StringComparer.Ordinal)||item.Tags.Contains("fuel",StringComparer.Ordinal)?"bulk":
             item.Tags.Contains("food",StringComparer.Ordinal)?"food":
             item.Tags.Contains("seed",StringComparer.Ordinal)?"seed":"item";
@@ -247,7 +250,7 @@ public sealed class RenderSnapshotBuilder
                     var point = new GridPoint(cx * 16 + x, cy * 16 + y);
                     if (!s.Map.Contains(point)) continue;
                     var t = s.Map[point];
-                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic, t.Fertility);
+                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic, t.Fertility, t.FarmPlot!=0, t.Tilled);
                 }
                 tiles = Array.AsReadOnly(values);
             }
@@ -272,6 +275,7 @@ public sealed class RenderSnapshotBuilder
             text.AppendLine($"вода {t.Water}");
             text.AppendLine($"лед {t.Ice*100:F1} см");
             text.AppendLine($"снег {t.Snow:P0}");
+            text.AppendLine($"грядка {(t.FarmPlot==0?"нет":t.Tilled?"вспахана":"да")}");
             text.AppendLine($"комната {(t.Room==0?"нет":t.Room)}");
             text.AppendLine($"проходимость {(s.Map.Walkable(p)?"да":"нет")}");
             text.AppendLine($"тропа {t.Traffic:F0}");

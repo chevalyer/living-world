@@ -154,7 +154,15 @@ public partial class GameRoot : Node2D
         SelectedSettlement=anchor;
         Hud.SelectedTile=settlement.Center;
         SetOverlay(MapOverlay.Settlements);
-        Camera.FocusArea(settlement.MinX,settlement.MinY,settlement.MaxX,settlement.MaxY);
+        if (settlement.Areas.Count>0)
+        {
+            var minX=settlement.Areas.Min(x=>x.X);
+            var minY=settlement.Areas.Min(x=>x.Y);
+            var maxX=settlement.Areas.Max(x=>x.X+SettlementAnalyzer.SettlementCellSize-1);
+            var maxY=settlement.Areas.Max(x=>x.Y+SettlementAnalyzer.SettlementCellSize-1);
+            Camera.FocusArea(minX,minY,maxX,maxY);
+        }
+        else Camera.Focus(settlement.Center);
         Hud.ShowSettlement(anchor);
         _runner?.SetView(new(0,Hud.SelectedTile,DebugView));
         Hud.Refresh();
