@@ -105,7 +105,12 @@ public static class TestSuite
         Test("sowing consumes the crop specific seed", ()=>
         {
             var(s,id)=Fixture(); Give(s,id,"wheat_seed"); Give(s,id,"carrot_seed");
-            Assert(new SowAction().Execute(s,id,new(){Argument="wheat"}),"wheat seed was not sown");
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            s.State.Map[cell].Tilled=true;
+            var farmCell=FarmCell(s,plot,cell);
+            Assert(new SowAction().Execute(s,id,new(){Target=farmCell,Position=cell,Argument="wheat"}),"wheat seed was not sown");
             Equal(0,s.Inventory.Count(id,"wheat_seed"));
             Equal(1,s.Inventory.Count(id,"carrot_seed"));
             Assert(s.State.Entities.Store<PlantComponent>().All.Any(x=>x.Value.Definition=="wheat"&&x.Value.Cultivator==id),
@@ -114,16 +119,119 @@ public static class TestSuite
         Test("a different crop seed cannot substitute for wheat seed", ()=>
         {
             var(s,id)=Fixture(); Give(s,id,"carrot_seed");
-            Assert(!new SowAction().Execute(s,id,new(){Argument="wheat"}),"carrot seed planted wheat");
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            s.State.Map[cell].Tilled=true;
+            var farmCell=FarmCell(s,plot,cell);
+            Assert(!new SowAction().Execute(s,id,new(){Target=farmCell,Position=cell,Argument="wheat"}),"carrot seed planted wheat");
             Equal(1,s.Inventory.Count(id,"carrot_seed"));
         });
-        Test("harvesting a crop returns its own seed", ()=>
+        Test("crops cannot be sown outside farm plots", ()=>
         {
-            var(s,id)=Fixture(); var crop=Plant(s,new(6,5),"carrot",3);
-            Assert(new HarvestAction().Execute(s,id,new(){Target=crop,Position=new(6,5)}),"carrot harvest failed");
+            var(s,id)=Fixture(); Give(s,id,"wheat_seed");
+            var p=s.State.Entities.Get<PositionComponent>(id).Tile;
+            Assert(!new SowAction().Execute(s,id,new(){Position=p,Argument="wheat"}),"crop was sown on ordinary ground");
+            Equal(1,s.Inventory.Count(id,"wheat_seed"));
+        });
+        Test("farm soil must be tilled with a tilling tool", ()=>
+        {
+            var(s,id)=Fixture();
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            var farmCell=FarmCell(s,plot,cell);
+            Assert(!new TillAction().Execute(s,id,new(){Target=farmCell,Position=cell}),"soil was tilled without a tilling tool");
+            Give(s,id,"stone_hoe");
+            Assert(new TillAction().Execute(s,id,new(){Target=farmCell,Position=cell}),"tilling failed with stone hoe");
+            Assert(s.State.Map[cell].Tilled,"farm cell was not marked tilled");
+            Assert(!s.State.Map[new(6,5)].Tilled,"tilling changed a different farm cell");
+        });
+        Test("planner can craft a hoe before tilling", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            Give(s,id,"log");
+            Give(s,id,"granite");
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            var options=s.Actions.All.Where(action=>!action.RequiresWork||context.CanWork)
+                .SelectMany(action=>action.Options(context)).ToList();
+            var plan=s.Planner.Find(context,options,new DesiredState("tilled","test",1));
+            Assert(plan is not null,"planner could not prepare a farm from raw materials");
+            Assert(plan!.Steps.Any(x=>x.Action=="craft"&&x.Argument=="stone_hoe"),"planner skipped crafting the required hoe");
+            Assert(plan.Steps.Any(x=>x.Action=="till"),"planner produced no tilling step");
+        });
+        Test("farm plots expose physical cells through perception", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var cells=s.State.Entities.Get<MemoryComponent>(id).Observations
+                .Where(x=>x.Kind=="farm_cell"&&s.State.Entities.Try<FarmCellComponent>(x.Entity)?.Plot==plot).ToArray();
+            Equal(FarmService.Width*FarmService.Height,cells.Length);
+            Assert(cells.All(x=>x.Definition=="untilled"),"new farm contains prepared or planted cells");
+        });
+        Test("harvesting a crop returns its seed and resets the farm cell", ()=>
+        {
+            var(s,id)=Fixture();
+            var cell=new GridPoint(6,5);
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            var farmCell=FarmCell(s,plot,cell);
+            var crop=Plant(s,cell,"carrot",3);
+            Assert(new HarvestAction().Execute(s,id,new(){Target=crop,Position=cell}),"carrot harvest failed");
+            Assert(!s.State.Entities.Exists(crop),"annual crop remained after harvest");
+            Equal("untilled",FarmService.CellState(s,farmCell));
             Assert(s.State.Entities.Store<ItemComponent>().All.Any(x=>x.Value.Definition=="carrot_seed"),"crop produced no carrot seed");
             Assert(!s.State.Entities.Store<ItemComponent>().All.Any(x=>x.Value.Definition=="wheat_seed"),"crop produced another plant seed");
-            Assert(!s.State.Entities.Exists(crop),"fully harvested annual crop remained in the world");
+        });
+        Test("different farm cells can be reserved by different NPCs", ()=>
+        {
+            var(s,first)=Fixture();
+            var second=Adult(s,new(6,5));
+            var plot=FarmService.Start(s,first,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            var a=FarmCell(s,plot,new(5,5));
+            var b=FarmCell(s,plot,new(6,5));
+            Assert(a!=b,"farm cells share one reservation target");
+            Assert(s.Reservations.Claim(a,first,s.State.Clock.Tick),"first cell reservation failed");
+            Assert(s.Reservations.Claim(b,second,s.State.Clock.Tick),"second cell should remain independently reservable");
+            Assert(!s.Reservations.Claim(a,second,s.State.Clock.Tick),"same farm cell was double reserved");
+        });
+        Test("wild crops do not suppress normal farm work", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            _=Plant(s,new(10,5),"carrot",3);
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
+            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="tilled"),
+                "a wild crop incorrectly satisfied the farming goal");
+        });
+        Test("farms and building clearance cannot overlap", ()=>
+        {
+            var(s,id)=Fixture();
+            var origin=new GridPoint(7,7);
+            var plot=FarmService.Start(s,id,origin);
+            Assert(plot!=0,"farm plot was not created");
+            var layout=BuildingService.CreateLayout(s,id,new(8,8),D.Buildings["wooden_cabin"]);
+            Assert(!BuildingService.CanPlace(s,id,layout),"house layout overlapped an existing farm");
+
+            var(s2,id2)=Fixture();
+            var project=s2.State.Entities.Create();
+            s2.State.Entities.Set(project,new PositionComponent { Tile=new(12,12) });
+            s2.State.Entities.Set(project,new ConstructionComponent
+            {
+                Definition="wooden_cabin",
+                Elements=[new(new GridPoint(12,12),"floor")],
+                Clearance=FarmService.Cells(origin).ToList()
+            });
+            s2.Spatial.Add(project,new(12,12));
+            Assert(!FarmService.CanPlace(s2,origin),"farm overlapped construction clearance");
         });
         Test("plant species fixes harvest product", ()=>
         {
@@ -653,6 +761,13 @@ public static class TestSuite
         var item=s.Inventory.Spawn(definition, s.State.Entities.Get<PositionComponent>(id).Tile, id);
         Assert(s.Inventory.PickUp(id, item), "fixture pickup failed");
         return item;
+    }
+    private static int FarmCell(SimulationSession s,int plot,GridPoint p)
+    {
+        return s.State.Entities.Store<FarmCellComponent>().All
+            .Where(x=>x.Value.Plot==plot)
+            .Select(x=>(Id:x.Key,Position:s.State.Entities.Get<PositionComponent>(x.Key).Tile))
+            .Single(x=>x.Position==p).Id;
     }
     private static int Plant(SimulationSession s, GridPoint p, string definition, int amount)
     {

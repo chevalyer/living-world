@@ -6,7 +6,7 @@ using LivingWorld.Simulation;
 namespace LivingWorld.Presentation;
 
 // These records contain only values and read-only collections. They never expose live components.
-public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility);
+public readonly record struct RenderTile(float Height, Biome Biome, WaterKind Water, float Snow, float Ice, float Traffic, float Fertility, bool Farm, bool Tilled);
 public readonly record struct RenderEntity(int Id, GridPoint Tile, string Kind, string Color, string Accent,
     string Shape, float Growth, float Yield);
 public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, string Action, int Appearance,
@@ -108,7 +108,7 @@ public sealed class RenderSnapshotBuilder
         {
             path = s.Entities.Get<MovementComponent>(request.Selected).Path.ToArray();
             memories = s.Entities.Get<MemoryComponent>(request.Selected).Observations
-                .Where(o => o.Kind is "water" or "plant").Select(o => new RenderMemory(o.Position, o.Confidence)).ToArray();
+                .Where(o => o.Kind is "water" or "plant" or "farm_cell").Select(o => new RenderMemory(o.Position, o.Confidence)).ToArray();
         }
         return new(generation, ++_sequence, now, s.Clock.Tick, s.Clock.Now, s.Seed, map.Width, map.Height,
             s.Start, s.Weather.Sunlight, s.Clock.Season, EnvironmentQueries.Air(s, s.Start), s.Weather.Rain > .1f,
@@ -176,7 +176,7 @@ public sealed class RenderSnapshotBuilder
                     var point = new GridPoint(cx * 16 + x, cy * 16 + y);
                     if (!s.Map.Contains(point)) continue;
                     var t = s.Map[point];
-                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic, t.Fertility);
+                    values[y * 16 + x] = new(t.Height, t.Biome, t.Water, t.Snow, t.Ice, t.Traffic, t.Fertility, t.FarmPlot!=0, t.Tilled);
                 }
                 tiles = Array.AsReadOnly(values);
             }
@@ -192,7 +192,7 @@ public sealed class RenderSnapshotBuilder
         if (request.Tile is { } p && s.Map.Contains(p))
         {
             var t = s.Map[p];
-            return new("местность", $"клетка {p.X}, {p.Y}\n\n{BiomeName(t.Biome)}\nвысота {t.Height:F3}\nвлажность {t.Moisture:P0}\nплодородие {t.Fertility:P0}\nвода {t.Water}\nлед {t.Ice*100:F1} см\nснег {t.Snow:P0}\nкомната {(t.Room==0?"нет":t.Room)}\nпроходимость {(s.Map.Walkable(p)?"да":"нет")}\nтропа {t.Traffic:F0}\nтемпература {EnvironmentQueries.Air(s,p):F1} °C");
+            return new("местность", $"клетка {p.X}, {p.Y}\n\n{BiomeName(t.Biome)}\nвысота {t.Height:F3}\nвлажность {t.Moisture:P0}\nплодородие {t.Fertility:P0}\nвода {t.Water}\nлед {t.Ice*100:F1} см\nснег {t.Snow:P0}\nгрядка {(t.FarmPlot==0?"нет":t.Tilled?"вспахана":"да")}\nкомната {(t.Room==0?"нет":t.Room)}\nпроходимость {(s.Map.Walkable(p)?"да":"нет")}\nтропа {t.Traffic:F0}\nтемпература {EnvironmentQueries.Air(s,p):F1} °C");
         }
         return new("выбери жителя", "Нажми на жителя или найди его по имени. Здесь появятся нужды, вещи, навыки, отношения и объяснение текущего решения.\n\nF2 покажет известные ему ресурсы и маршрут.");
     }

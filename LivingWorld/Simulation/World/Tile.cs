@@ -28,4 +28,6 @@ public sealed class Tile
     public int Roof { get; set; }
     public int Floor { get; set; }
     public int Room { get; set; }
+    public int FarmPlot { get; set; }
+    public bool Tilled { get; set; }
 }
