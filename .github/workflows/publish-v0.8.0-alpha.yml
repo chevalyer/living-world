@@ -1,0 +1,43 @@
+name: publish v0.8.0-alpha
+
+on:
+  push:
+    branches:
+      - automation/publish-v0.8.0-alpha
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.8.0-alpha --repo chevalyer/living-world >/dev/null 2>&1; then
+            echo "v0.8.0-alpha already exists"
+            exit 0
+          fi
+          cat > /tmp/notes.md <<'EOF'
+          * улучшено строительство домов: разные размеры и формы, точный footprint, clearance и доступные двери
+          * добавлены новые каменные и железные инструменты, включая мотыги с capability `till`
+          * расширены одежда, еда, семена и культурные растения
+          * культурные растения больше не появляются и не размножаются сами по миру
+          * добавлено дикое зерно как отдельный естественный источник пищи, не являющийся культурой
+          * добавлены физические грядки 4×4 и отдельные farm cells
+          * npc размечают участок, создают/используют мотыгу, вспахивают землю и сеют только на подготовленных клетках
+          * несколько npc могут одновременно работать на разных клетках одной фермы
+          * после сбора однолетних культур растение удаляется, а землю нужно подготовить заново
+          * дома и фермы больше не могут пересекаться
+          * границы поселений состоят из фиксированных блоков 7×7 и используют реальный footprint домов
+          * сохранена совместимость со старыми сохранениями через fallback и legacy fingerprints
+          * версия собрана поверх v0.7.0-alpha, поэтому системы мебели, производственных объектов и поведения npc из v0.7 сохранены
+          * исправлена найденная в release soak регрессия, при которой после удаления диких crops поселения могли вымирать от голода
+          
+          **Base:** v0.7.0-alpha
+          **Release candidate:** 03eaf3196b2ca4e132b8dc281a7369c7b35cbe67
+          EOF
+          gh release create v0.8.0-alpha             --repo chevalyer/living-world             --target 03eaf3196b2ca4e132b8dc281a7369c7b35cbe67             --title "v0.8.0-alpha"             --notes-file /tmp/notes.md
