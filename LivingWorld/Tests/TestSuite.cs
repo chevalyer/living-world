@@ -265,6 +265,47 @@ public static class TestSuite
             Equal(2, a[0].Homes);
             Equal(2, a[0].Members);
             Assert(a[0].MinX<=4&&a[0].MaxX>=10, "settlement bounds exclude homes");
+            Assert(a[0].Areas.All(area=>area.MaxX-area.MinX+1==7&&area.MaxY-area.MinY+1==7),
+                "settlement cells are not fixed 7x7 blocks");
+        });
+        Test("settlement boundary follows exact generated house footprint", ()=>
+        {
+            var(s, first)=Fixture();
+            var home=FinishedProject(s,new(10,10));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=home;
+            s.State.Entities.Get<ConstructionComponent>(home).Footprint=[
+                new(5,10),new(6,10),new(7,10),new(8,10),new(9,10),new(10,10),
+                new(11,10),new(12,10),new(13,10),new(14,10),new(15,10)
+            ];
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Assert(settlement.Contains(new(15,10)),"generated house footprint was clipped to legacy Size");
+        });
+        Test("settlement boundary does not fill empty space between linked homes", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s,new(2,2));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s,new(19,2));
+            var homeB=FinishedProject(s,new(19,2));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Assert(settlement.Areas.Any(area=>area.Contains(new(2,2))),"first home missing from boundary");
+            Assert(settlement.Areas.Any(area=>area.Contains(new(19,2))),"second home missing from boundary");
+            Assert(!settlement.Contains(new(8,2)),"empty 7x7 block was incorrectly included");
+        });
+        Test("l shaped settlement leaves the empty corner outside", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s,new(2,2));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s,new(19,2));
+            var homeB=FinishedProject(s,new(19,2));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            var third=Adult(s,new(2,19));
+            var homeC=FinishedProject(s,new(2,19));
+            s.State.Entities.Get<FamilyComponent>(third).HomeProject=homeC;
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Assert(!settlement.Contains(new(8,8)),"L-shaped settlement filled its empty corner");
         });
         Test("settlement analyzer separates distant homes", ()=>
         {
@@ -300,6 +341,7 @@ public static class TestSuite
             var snapshot=new LivingWorld.Presentation.RenderSnapshotBuilder().Capture(s, 1, true, 1, 0, new(), force:true);
             Equal(1, snapshot.Settlements.Count);
             Equal(1, snapshot.Settlements[0].Homes);
+            Assert(snapshot.Settlements[0].Areas.Count>0,"settlement areas missing from render snapshot");
             Assert(snapshot.People.Any(x=>x.Id==first&&!string.IsNullOrWhiteSpace(x.Name)), "person name missing from render snapshot");
         });
         Test("separate save paths do not overwrite each other", ()=>

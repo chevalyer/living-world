@@ -14,9 +14,10 @@ public readonly record struct RenderPerson(int Id, GridPoint Tile, string Name, 
 public readonly record struct RenderMemory(GridPoint Tile, float Confidence);
 public sealed record RenderChunk(int Key, int X, int Y, long Revision,
     ReadOnlyCollection<RenderTile> Tiles, ReadOnlyCollection<RenderEntity> Entities);
+public readonly record struct RenderSettlementArea(int X,int Y);
 public sealed record RenderSettlement(
     int Anchor, string Name, GridPoint Center,
-    int MinX, int MinY, int MaxX, int MaxY,
+    ReadOnlyCollection<RenderSettlementArea> Areas,
     int Homes, int Members, int Families, float FoodCalories, int Projects,
     ReadOnlyCollection<string> Specializations);
 public sealed record RenderRoom(int Id, ReadOnlyCollection<GridPoint> Tiles);
@@ -71,8 +72,10 @@ public sealed class RenderSnapshotBuilder
             _population = s.Population;
             _homes = s.Entities.Store<ConstructionComponent>().All.Count(x => x.Value.Finished);
             _settlements = SettlementAnalyzer.DescribeAll(session).Select(x=>new RenderSettlement(
-                x.Anchor,x.Name,x.Center,x.MinX,x.MinY,x.MaxX,x.MaxY,x.Homes,x.Members,x.Families,
-                x.FoodCalories,x.Projects,Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
+                x.Anchor,x.Name,x.Center,
+                Array.AsReadOnly(x.Areas.Select(area=>new RenderSettlementArea(area.X,area.Y)).ToArray()),
+                x.Homes,x.Members,x.Families,x.FoodCalories,x.Projects,
+                Array.AsReadOnly(x.Specializations.ToArray()))).ToArray();
             _worldText = DescribeWorld(session);
             _systemsText = DescribeSystems(session);
             _inspector = DescribeSelection(session, request);
