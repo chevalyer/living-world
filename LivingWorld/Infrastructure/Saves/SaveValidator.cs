@@ -23,6 +23,33 @@ public static class SaveValidator
         }
         foreach (var (_, plant) in e.Store<PlantComponent>().All)
             if (!definitions.Plants.ContainsKey(plant.Definition)) throw new InvalidDataException("Unknown plant definition.");
+        foreach (var (id, plot) in e.Store<FarmPlotComponent>().All)
+        {
+            if (plot.Cells.Count==0||plot.Cells.Count!=plot.Cells.Distinct().Count())throw new InvalidDataException("Invalid farm plot.");
+            foreach (var cell in plot.Cells)
+                if (!state.Map.Contains(cell)||state.Map[cell].FarmPlot!=id)throw new InvalidDataException("Farm plot and map disagree.");
+            var physical=e.Store<FarmCellComponent>().All
+                .Where(x=>x.Value.Plot==id)
+                .Select(x=>e.Try<PositionComponent>(x.Key)?.Tile)
+                .Where(x=>x.HasValue)
+                .Select(x=>x!.Value)
+                .ToArray();
+            if (physical.Length!=plot.Cells.Count||!physical.ToHashSet().SetEquals(plot.Cells))
+                throw new InvalidDataException("Farm plot cells are incomplete.");
+        }
+        foreach (var (id, cell) in e.Store<FarmCellComponent>().All)
+        {
+            var position=e.Try<PositionComponent>(id)?.Tile;
+            if (position is null||e.Try<FarmPlotComponent>(cell.Plot) is not { } plot||
+                !plot.Cells.Contains(position.Value)||state.Map[position.Value].FarmPlot!=cell.Plot)
+                throw new InvalidDataException("Invalid farm cell.");
+        }
+        for (var i=0;i<state.Map.Tiles.Length;i++)
+        {
+            var plot=state.Map.Tiles[i].FarmPlot;
+            if (plot!=0&&(e.Try<FarmPlotComponent>(plot) is not { } farm||!farm.Cells.Contains(state.Map.Point(i))))
+                throw new InvalidDataException("Map references an invalid farm plot.");
+        }
         foreach (var (_, equipment) in e.Store<EquipmentComponent>().All)
             foreach (var item in equipment.Items)
                 if (!e.Has<ItemComponent>(item)) throw new InvalidDataException("Missing equipped item.");

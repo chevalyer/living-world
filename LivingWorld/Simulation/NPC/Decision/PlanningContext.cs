@@ -22,6 +22,7 @@ public sealed class PlanningContext
     public float Insulation { get; init; }
     public bool Sheltered { get; init; }
     public GridPoint? BuildSite { get; init; }
+    public GridPoint? FarmSite { get; init; }
     public bool SocialReady { get; init; }
     public float MaxMass { get; init; } = 28;
     public float MaxVolume { get; init; } = 40;

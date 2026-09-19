@@ -132,6 +132,13 @@ public sealed class PerceptionSystem : ISimulationSystem
                 o.Quantity=project.Elements.Count-project.Completed;
                 o.WorkPosition=project.Finished?null:project.Elements[project.Completed].Position;
             }
+            else if (e.Has<FarmCellComponent>(id))
+            {
+                o.Kind="farm_cell";
+                o.Definition=FarmService.CellState(session,id);
+                o.Quantity=1;
+            }
+            else if (e.Has<FarmPlotComponent>(id))continue;
             else continue;
             Add(o);
         }

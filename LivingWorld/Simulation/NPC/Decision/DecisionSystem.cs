@@ -17,7 +17,7 @@ public sealed class DecisionSystem : ISimulationSystem
             if (processed>=session.MaxDecisionsPerTick)break;
             processed++;
             s.DecisionCursor=actor;
-            var context=ContextBuilder.Create(session, actor, findBuildSite:false);
+            var context=ContextBuilder.Create(session,actor,findBuildSite:false,findFarmSite:false);
             var desires=session.Evaluators.SelectMany(x=>x.Evaluate(context)).Where(x=>x.Urgency>.025f).OrderByDescending(x=>x.Urgency).Take(6).ToArray();
             var urgent=desires.FirstOrDefault();
             if (decision.Plan.Count>0 && (urgent is null||urgent.Fact==decision.DesiredFact||urgent.Urgency<5))

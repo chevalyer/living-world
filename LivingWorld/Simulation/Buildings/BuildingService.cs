@@ -154,7 +154,7 @@ public static class BuildingService
             if (!s.Map.Contains(p))return false;
             var tile=s.Map[p];
             if (tile.Water!=WaterKind.None||tile.Wall!=0||tile.Door!=0||tile.Roof!=0||tile.Floor!=0||
-                tile.Biome==Biome.Alpine)return false;
+                tile.FarmPlot!=0||tile.Biome==Biome.Alpine)return false;
         }
 
         foreach (var p in layout.Clearance)
@@ -162,7 +162,7 @@ public static class BuildingService
             if (!s.Map.Contains(p))return false;
             if (footprint.Contains(p))continue;
             var tile=s.Map[p];
-            if (tile.Wall!=0||tile.Door!=0||tile.Roof!=0||tile.Floor!=0)return false;
+            if (tile.Wall!=0||tile.Door!=0||tile.Roof!=0||tile.Floor!=0||tile.FarmPlot!=0)return false;
         }
 
         foreach (var id in session.Spatial.Query(layout.DoorOutside,Math.Max(layout.Width,layout.Height)+4))
@@ -196,7 +196,7 @@ public static class BuildingService
             var p=center+new GridPoint(dx,dy);
             if (!session.State.Map.Contains(p))return false;
             var tile=session.State.Map[p];
-            if (tile.Water!=WaterKind.None||tile.Wall!=0||tile.Door!=0||tile.Roof!=0||tile.Floor!=0)return false;
+            if (tile.Water!=WaterKind.None||tile.Wall!=0||tile.Door!=0||tile.Roof!=0||tile.Floor!=0||tile.FarmPlot!=0)return false;
         }
         return true;
     }
