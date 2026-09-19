@@ -90,7 +90,7 @@ public static class FarmService
         if (plot is null||!plot.Cells.Contains(cell)||s.Map[cell].FarmPlot!=farmCell.Plot||s.Map[cell].Tilled)return false;
         if (s.Entities.Get<PositionComponent>(actor).Tile.Distance(cell)>1)return false;
         return !session.Spatial.Query(cell,0).Any(id=>
-            e.Try<PlantComponent>(id) is { } plant&&
+            s.Entities.Try<PlantComponent>(id) is { } plant&&
             session.Definitions.Plants[plant.Definition].Kind=="tree");
     }
 
