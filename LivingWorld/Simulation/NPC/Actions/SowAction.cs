@@ -8,9 +8,16 @@ public sealed class SowAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if (!c.Knowledge.Facts.Contains("farming"))yield break;
+        var availableSeeds=c.Inventory.Select(x=>x.Item.Definition).ToHashSet(StringComparer.Ordinal);
+        foreach(var item in c.Known.Where(x=>x.Kind=="item"&&x.Quantity>0&&x.UnreachableUntil<=c.Tick))
+            availableSeeds.Add(item.Product);
+        foreach(var storage in c.Storages())
+            foreach(var item in storage.Items.Where(x=>x.Value>0))
+                availableSeeds.Add(item.Key);
         var crops=c.Definitions.Plants.Values
-            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&c.Definitions.Items.ContainsKey(x.Seed))
-            .OrderBy(x=>x.Id,StringComparer.Ordinal)
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&availableSeeds.Contains(x.Seed)&&c.Definitions.Items.ContainsKey(x.Seed))
+            .OrderByDescending(x=>c.Definitions.Items[x.Product].Calories*x.Yield/Math.Max(1,x.GrowthDays))
+            .ThenBy(x=>x.Id,StringComparer.Ordinal)
             .ToArray();
         foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="tilled").Take(3))
             foreach (var plant in crops)

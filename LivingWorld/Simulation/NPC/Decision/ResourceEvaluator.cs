@@ -22,7 +22,8 @@ public sealed class ResourceEvaluator : ISituationEvaluator
             var knownPeople=1+c.Known.Where(x=>x.Kind=="npc")
                 .Select(x=>x.Entity).Distinct().Count();
             var targetFoodCrops=Math.Max(12,knownPeople*12);
-            var plantedFood=c.Known.Where(x=>x.Kind=="plant"&&x.UnreachableUntil<=c.Tick)
+            var farmPositions=farmCells.Select(x=>x.Position).ToHashSet();
+            var plantedFood=c.Known.Where(x=>x.Kind=="plant"&&x.UnreachableUntil<=c.Tick&&farmPositions.Contains(x.Position))
                 .Count(x=>c.Definitions.Plants.TryGetValue(x.Definition,out var plant)&&plant.Kind=="crop"&&
                     c.Definitions.Items.TryGetValue(plant.Product,out var product)&&product.Calories>0);
             var shortage=Math.Max(0,targetFoodCrops-plantedFood);
