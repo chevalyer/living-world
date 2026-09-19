@@ -1,0 +1,27 @@
+{
+  "id": "iron_axe",
+  "name": "железный топор",
+  "material": "iron",
+  "mass": 2.1,
+  "volume": 3.1,
+  "tools": {
+    "chop": 1.5
+  },
+  "durability": 170,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_axe",
+      "name": "собрать железный топор",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 85
+    }
+  ]
+}

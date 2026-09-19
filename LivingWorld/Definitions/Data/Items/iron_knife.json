@@ -1,0 +1,27 @@
+{
+  "id": "iron_knife",
+  "name": "железный нож",
+  "material": "iron",
+  "mass": 0.7,
+  "volume": 0.9,
+  "tools": {
+    "cut": 1.5
+  },
+  "durability": 140,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_knife",
+      "name": "собрать железный нож",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 65
+    }
+  ]
+}

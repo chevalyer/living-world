@@ -1,0 +1,24 @@
+{
+  "id": "stick",
+  "name": "палка",
+  "material": "wood",
+  "mass": 0.35,
+  "volume": 0.5,
+  "durability": 45,
+  "tags": [
+    "material"
+  ],
+  "recipes": [
+    {
+      "id": "stick",
+      "name": "нарезать палки",
+      "inputs": {
+        "log": 1
+      },
+      "count": 4,
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 15
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "iron_shovel",
+  "name": "железная лопата",
+  "material": "iron",
+  "mass": 2,
+  "volume": 3.3,
+  "tools": {
+    "dig": 1.4
+  },
+  "durability": 160,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_shovel",
+      "name": "собрать железную лопату",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 85
+    }
+  ]
+}
