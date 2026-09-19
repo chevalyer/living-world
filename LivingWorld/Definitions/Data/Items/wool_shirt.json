@@ -1,0 +1,26 @@
+{
+  "id": "wool_shirt",
+  "name": "шерстяная кофта",
+  "material": "wool",
+  "mass": 0.75,
+  "volume": 1.05,
+  "slots": [
+    "torso"
+  ],
+  "coverage": 0.42,
+  "thickness": 1.45,
+  "comfort": 0.9,
+  "recipes": [
+    {
+      "id": "wool_shirt",
+      "name": "связать шерстяную кофту",
+      "inputs": {
+        "wool_yarn": 4
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 65
+    }
+  ]
+}

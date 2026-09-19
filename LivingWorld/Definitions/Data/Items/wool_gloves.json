@@ -1,0 +1,26 @@
+{
+  "id": "wool_gloves",
+  "name": "шерстяные перчатки",
+  "material": "wool",
+  "mass": 0.2,
+  "volume": 0.25,
+  "slots": [
+    "hands"
+  ],
+  "coverage": 0.08,
+  "thickness": 1.35,
+  "comfort": 0.95,
+  "recipes": [
+    {
+      "id": "wool_gloves",
+      "name": "связать шерстяные перчатки",
+      "inputs": {
+        "wool_yarn": 2
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 35
+    }
+  ]
+}

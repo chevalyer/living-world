@@ -1,0 +1,22 @@
+{
+  "id": "turnip",
+  "name": "репа",
+  "kind": "crop",
+  "product": "turnip",
+  "seed": "turnip_seed",
+  "seedYield": 2,
+  "minTemperature": 3,
+  "maxTemperature": 27,
+  "frostTolerance": -6,
+  "minMoisture": 0.34,
+  "growthDays": 45,
+  "yield": 9,
+  "regrowthDays": 20,
+  "lifespanDays": 160,
+  "color": "#748b50",
+  "fruitColor": "#d8d2aa",
+  "spawnWeight": 0.06,
+  "optimalTemperature": 13,
+  "shape": "round",
+  "harvestRemovesPlant": true
+}

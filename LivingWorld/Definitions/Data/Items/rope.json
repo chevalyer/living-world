@@ -1,0 +1,24 @@
+{
+  "id": "rope",
+  "name": "верёвка",
+  "material": "flax",
+  "mass": 0.5,
+  "volume": 0.7,
+  "durability": 65,
+  "tags": [
+    "material",
+    "cordage"
+  ],
+  "recipes": [
+    {
+      "id": "rope",
+      "name": "сплести верёвку",
+      "inputs": {
+        "fiber": 4
+      },
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 20
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "millet",
+  "name": "просо",
+  "kind": "crop",
+  "product": "millet_grain",
+  "seed": "millet_seed",
+  "seedYield": 3,
+  "minTemperature": 10,
+  "maxTemperature": 36,
+  "frostTolerance": 0,
+  "minMoisture": 0.22,
+  "growthDays": 45,
+  "yield": 11,
+  "regrowthDays": 16,
+  "lifespanDays": 165,
+  "color": "#a99655",
+  "fruitColor": "#d6c26f",
+  "spawnWeight": 0.1,
+  "optimalTemperature": 22,
+  "shape": "grass",
+  "harvestRemovesPlant": true
+}

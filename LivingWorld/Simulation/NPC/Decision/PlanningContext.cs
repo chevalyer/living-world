@@ -25,7 +25,7 @@ public sealed class PlanningContext
     public int Room { get; init; }
     public int MapWidth { get; init; }
     public GridPoint? BuildSite { get; init; }
-    public GridPoint? SowSite { get; init; }
+    public GridPoint? FarmSite { get; init; }
     public Dictionary<string,GridPoint> FacilitySites { get; init; } = new(StringComparer.Ordinal);
     public bool SocialReady { get; init; }
     public float MaxMass { get; init; } = 28;

@@ -16,11 +16,19 @@ public sealed class ResourceEvaluator : ISituationEvaluator
 
         if(c.Knowledge.Facts.Contains("farming"))
         {
-            var ownCrops=c.Known.Count(o=>o.Kind=="plant"&&o.Owner==c.Actor&&
-                c.Definitions.Plants.TryGetValue(o.Definition,out var plant)&&plant.Kind=="crop"&&c.Tick-o.SeenTick<1440*20);
+            var farm=c.OfKind("farm_cell").ToArray();
+            var planted=farm.Count(x=>x.Definition=="planted");
             const int targetCrops=3;
-            if(ownCrops<targetCrops)
-                yield return new("sown","расширить возобновляемый запас еды",.18f+(targetCrops-ownCrops)*.055f);
+            if(planted<targetCrops)
+            {
+                var urgency=.18f+(targetCrops-planted)*.055f;
+                if(farm.Any(x=>x.Definition=="tilled"))
+                    yield return new("sown","засеять подготовленную грядку",urgency);
+                else if(farm.Any(x=>x.Definition=="untilled"))
+                    yield return new("tilled","подготовить землю для посева",urgency);
+                else if(farm.Length==0)
+                    yield return new("farm_plotted","выделить место под грядки",urgency);
+            }
         }
     }
 }

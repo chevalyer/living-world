@@ -1,0 +1,27 @@
+{
+  "id": "iron_hammer",
+  "name": "железный молоток",
+  "material": "iron",
+  "mass": 2.2,
+  "volume": 3,
+  "tools": {
+    "build": 1.4
+  },
+  "durability": 180,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_hammer",
+      "name": "собрать железный молоток",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 90
+    }
+  ]
+}

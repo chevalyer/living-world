@@ -17,7 +17,7 @@ public sealed class DecisionSystem : ISimulationSystem
             if (processed>=session.MaxDecisionsPerTick)break;
             processed++;
             s.DecisionCursor=actor;
-            var context=ContextBuilder.Create(session, actor, findBuildSite:false);
+            var context=ContextBuilder.Create(session,actor,findBuildSite:false,findFarmSite:false);
             var desires=session.Evaluators.SelectMany(x=>x.Evaluate(context)).Where(x=>x.Urgency>.025f).OrderByDescending(x=>x.Urgency).Take(6).ToArray();
             var urgent=desires.FirstOrDefault();
             var emergency=urgent is not null&&urgent.Fact is "fed" or "hydrated"&&urgent.Urgency>=3;
@@ -27,7 +27,8 @@ public sealed class DecisionSystem : ISimulationSystem
                 decision.NextDecision=s.Clock.Tick+12;
                 continue;
             }
-            context=ContextBuilder.Create(session, actor);
+            var needsFarmSite=desires.Any(x=>x.Fact=="farm_plotted");
+            context=ContextBuilder.Create(session,actor,findBuildSite:true,findFarmSite:needsFarmSite);
             var options=session.Actions.All.Where(a=>!a.RequiresWork||context.CanWork).SelectMany(a=>a.Options(context)).ToList();
             foreach (var option in options)
             {

@@ -1,0 +1,31 @@
+{
+  "id": "vegetable_stew",
+  "name": "овощное рагу",
+  "material": "organic",
+  "mass": 0.8,
+  "volume": 0.95,
+  "calories": 620,
+  "water": 0.32,
+  "shelfLifeDays": 2,
+  "tags": [
+    "food",
+    "cooked"
+  ],
+  "recipes": [
+    {
+      "id": "vegetable_stew",
+      "name": "приготовить овощное рагу",
+      "inputs": {
+        "carrot": 1,
+        "turnip": 1,
+        "onion": 1,
+        "cabbage": 1,
+        "peas": 1
+      },
+      "operation": "heat",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 45
+    }
+  ]
+}

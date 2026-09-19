@@ -7,40 +7,30 @@ public sealed class SowAction : SimAction
     public override bool Exclusive=>true;
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
-        if(!c.Knowledge.Facts.Contains("farming")||c.SowSite is not { } site)yield break;
-        foreach(var plant in c.Definitions.Plants.Values.Where(x=>x.Kind=="crop"&&c.OutdoorAir>=x.MinTemperature))
-        {
-            var reservation=-(site.Y*c.MapWidth+site.X+1);
-            var op=Option(site,reservation,plant.Id,20);
-            op.Requires=[new(Item(plant.Product),1)];
-            op.Effects=[new(Item(plant.Product),-1),new("sown",1,true)];
-            yield return op;
-        }
+        if (!c.Knowledge.Facts.Contains("farming"))yield break;
+        var availableSeeds=c.Inventory
+            .Select(x=>x.Item.Definition)
+            .ToHashSet(StringComparer.Ordinal);
+        var crops=c.Definitions.Plants.Values
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&availableSeeds.Contains(x.Seed))
+            .OrderBy(x=>x.Id,StringComparer.Ordinal)
+            .ToArray();
+        foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="tilled").Take(3))
+            foreach (var plant in crops)
+            {
+                var op=Option(cell.Position, cell.Entity, plant.Id, 20);
+                op.Requires=[new(Item(plant.Seed), 1)];
+                op.Effects=[new(Item(plant.Seed), -1), new("sown", 1, true)];
+                yield return op;
+            }
     }
     public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
     {
-        reason="место больше не подходит";
-        if(!base.CanExecute(s,actor,step,out _ )||!s.State.Map.Contains(step.Position))return false;
-        var p=step.Position;
-        var d=s.Definitions.Plants[step.Argument];
-        var tile=s.State.Map[p];
-        if(s.State.Entities.Get<PositionComponent>(actor).Tile.Distance(p)>1||
-           !s.State.Map.Walkable(p)||tile.Roof>0||tile.Floor>0||tile.Water!=WaterKind.None||
-           EnvironmentQueries.Air(s.State,p)<d.MinTemperature)return false;
-        return !s.Spatial.Query(p,0).Any(id=>s.State.Entities.Has<PlantComponent>(id)&&s.State.Entities.Get<PositionComponent>(id).Tile==p);
+        if (!base.CanExecute(s,actor,step,out reason))return false;
+        if (FarmService.CanSow(s,actor,step.Target,step.Position,step.Argument))return true;
+        reason="сеять можно только на вспаханной свободной грядке";
+        return false;
     }
-    public override bool Execute(SimulationSession s,int actor,ActionStep step)
-    {
-        if(!CanExecute(s,actor,step,out _))return false;
-        var p=step.Position;
-        var d=s.Definitions.Plants[step.Argument];
-        if(!s.Inventory.Consume(actor,d.Product,1))return false;
-        var id=s.State.Entities.Create();
-        s.State.Entities.Set(id,new PositionComponent { Tile=p });
-        s.State.Entities.Set(id,new PlantComponent { Definition=d.Id,Growth=.01f,Cultivator=actor });
-        s.State.Entities.Set(id,new OwnershipComponent { Owner=actor });
-        s.Spatial.Add(id,p);
-        s.Events.Publish(new SkillUsedEvent(actor,"farming",4));
-        return true;
-    }
+    public override bool Execute(SimulationSession s, int actor, ActionStep step)
+        =>FarmService.Sow(s,actor,step.Target,step.Position,step.Argument);
 }

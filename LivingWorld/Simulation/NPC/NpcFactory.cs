@@ -19,7 +19,11 @@ public sealed class NpcFactory(DefinitionCatalog definitions)
         // Founders keep only primitive bootstrap tools. Clothing is produced by the simulation.
         Give("stone_axe");
         Give("stone_pick");
-        Give("grain");
+        for(var i=0;i<5;i++)Give("grain");
+        var seeds=definitions.Plants.Values
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&definitions.Items.ContainsKey(x.Seed))
+            .Select(x=>x.Seed).Distinct(StringComparer.Ordinal).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
+        for(var i=0;i<2&&seeds.Length>0;i++)Give(seeds[random.Range(0,seeds.Length)]);
         state.Entities.Get<SkillsComponent>(id).Experience["building"]=random.Range(20f, 90f);
         return id;
     }

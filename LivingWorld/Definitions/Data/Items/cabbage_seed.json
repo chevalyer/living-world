@@ -1,0 +1,12 @@
+{
+  "id": "cabbage_seed",
+  "name": "семена капусты",
+  "material": "organic",
+  "mass": 0.03,
+  "volume": 0.04,
+  "shelfLifeDays": 365,
+  "tags": [
+    "seed",
+    "farming"
+  ]
+}
