@@ -1,0 +1,27 @@
+{
+  "id": "iron_hoe",
+  "name": "железная мотыга",
+  "material": "iron",
+  "mass": 1.8,
+  "volume": 2.8,
+  "tools": {
+    "till": 1.4
+  },
+  "durability": 155,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_hoe",
+      "name": "собрать железную мотыгу",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 80
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "iron_sickle",
+  "name": "железный серп",
+  "material": "iron",
+  "mass": 1.1,
+  "volume": 1.6,
+  "tools": {
+    "harvest": 1.5
+  },
+  "durability": 145,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "iron_sickle",
+      "name": "собрать железный серп",
+      "inputs": {
+        "iron_ingot": 1,
+        "log": 1
+      },
+      "skill": "smithing",
+      "knowledge": "smithing",
+      "minutes": 70
+    }
+  ]
+}
