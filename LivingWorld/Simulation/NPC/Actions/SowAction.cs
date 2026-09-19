@@ -8,19 +8,18 @@ public sealed class SowAction : SimAction
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
         if (!c.Knowledge.Facts.Contains("farming"))yield break;
-        var availableSeeds=c.Inventory
-            .Select(x=>x.Item.Definition)
-            .ToHashSet(StringComparer.Ordinal);
         var crops=c.Definitions.Plants.Values
-            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&availableSeeds.Contains(x.Seed))
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&c.Definitions.Items.ContainsKey(x.Seed))
             .OrderBy(x=>x.Id,StringComparer.Ordinal)
             .ToArray();
         foreach (var cell in c.OfKind("farm_cell").Where(x=>x.Definition=="tilled").Take(3))
             foreach (var plant in crops)
             {
+                if(cell.Temperature<plant.MinTemperature||cell.Temperature>plant.MaxTemperature)continue;
                 var op=Option(cell.Position, cell.Entity, plant.Id, 20);
                 op.Requires=[new(Item(plant.Seed), 1)];
                 op.Effects=[new(Item(plant.Seed), -1), new("sown", 1, true)];
+                if(c.Definitions.Items[plant.Product].Calories>0)op.Effects.Add(new("food.sown",1,true));
                 yield return op;
             }
     }

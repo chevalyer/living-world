@@ -6,7 +6,7 @@ public sealed class PlanFarmAction : SimAction
     public override bool RequiresWork=>true;
     public override IEnumerable<ActionOption> Options(PlanningContext c)
     {
-        if (!c.Knowledge.Facts.Contains("farming")||c.FarmSite is not { } site||c.OfKind("farm_cell").Any())yield break;
+        if (!c.Knowledge.Facts.Contains("farming")||c.FarmSite is not { } site)yield break;
         var op=Option(site,duration:10);
         op.Effects=[new("farm_plotted",1,true)];
         yield return op;

@@ -16,18 +16,25 @@ public sealed class ResourceEvaluator : ISituationEvaluator
 
         if(c.Knowledge.Facts.Contains("farming"))
         {
-            var farm=c.OfKind("farm_cell").ToArray();
-            var planted=farm.Count(x=>x.Definition=="planted");
-            const int targetCrops=3;
-            if(planted<targetCrops)
+            var farmCells=c.Known.Where(x=>x.Kind=="farm_cell"&&x.UnreachableUntil<=c.Tick).ToArray();
+            var farmCapacity=c.Known.Where(x=>x.Kind=="farm_plot"&&x.UnreachableUntil<=c.Tick)
+                .Sum(x=>Math.Max(0,x.Quantity));
+            var knownPeople=1+c.Known.Where(x=>x.Kind=="npc")
+                .Select(x=>x.Entity).Distinct().Count();
+            var targetFoodCrops=Math.Max(12,knownPeople*12);
+            var plantedFood=c.Known.Where(x=>x.Kind=="plant"&&x.UnreachableUntil<=c.Tick)
+                .Count(x=>c.Definitions.Plants.TryGetValue(x.Definition,out var plant)&&plant.Kind=="crop"&&
+                    c.Definitions.Items.TryGetValue(plant.Product,out var product)&&product.Calories>0);
+            var shortage=Math.Max(0,targetFoodCrops-plantedFood);
+            if(shortage>0)
             {
-                var urgency=.18f+(targetCrops-planted)*.055f;
-                if(farm.Any(x=>x.Definition=="tilled"))
-                    yield return new("sown","засеять подготовленную грядку",urgency);
-                else if(farm.Any(x=>x.Definition=="untilled"))
+                var urgency=.22f+Math.Min(.5f,shortage/(float)targetFoodCrops*.5f);
+                if(farmCapacity<targetFoodCrops)
+                    yield return new("farm_plotted","расширить запас продовольственных грядок",urgency*.9f);
+                if(farmCells.Any(x=>x.Definition=="tilled"))
+                    yield return new("food.sown","засеять продовольственную грядку",urgency);
+                else if(farmCells.Any(x=>x.Definition=="untilled"))
                     yield return new("tilled","подготовить землю для посева",urgency);
-                else if(farm.Length==0)
-                    yield return new("farm_plotted","выделить место под грядки",urgency);
             }
         }
     }

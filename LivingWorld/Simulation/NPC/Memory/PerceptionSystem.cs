@@ -188,8 +188,13 @@ public sealed class PerceptionSystem : ISimulationSystem
                 o.Kind="farm_cell";
                 o.Definition=FarmService.CellState(session,id);
                 o.Quantity=1;
+                o.Temperature=EnvironmentQueries.Air(s,pos.Tile);
             }
-            else if (e.Has<FarmPlotComponent>(id))continue;
+            else if (e.Try<FarmPlotComponent>(id) is { } farmPlot)
+            {
+                o.Kind="farm_plot";
+                o.Quantity=farmPlot.Cells.Count;
+            }
             else continue;
             Add(o);
         }

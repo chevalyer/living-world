@@ -16,7 +16,7 @@ public static class ContextBuilder
             .Where(o=>session.Pathfinder.CanReach(p,o.Kind=="project"&&o.WorkPosition.HasValue?o.WorkPosition.Value:o.Position,
                 o.Kind=="shelter"?0:1))
             .ToList();
-        var farmSite=findFarmSite&&knowledge.Facts.Contains("farming")&&!known.Any(o=>o.Kind=="farm_cell")
+        var farmSite=findFarmSite&&knowledge.Facts.Contains("farming")
             ?FarmService.FindVisibleSite(session,actor):null;
         return new PlanningContext
         {

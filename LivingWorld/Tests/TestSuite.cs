@@ -259,6 +259,47 @@ public static class TestSuite
             Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="tilled"),
                 "a wild crop incorrectly satisfied the farming goal");
         });
+        Test("food farming expands beyond one plot for nearby population", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            _=Adult(s,new(10,5));
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
+            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="farm_plotted"),
+                "one 4x4 plot incorrectly satisfied food capacity for two people");
+            context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:true);
+            Assert(context.FarmSite.HasValue&&new PlanFarmAction().Options(context).Any(),
+                "existing farm blocked planning an additional food plot");
+        });
+        Test("planner can pick up harvested seed and resow food", ()=>
+        {
+            var(s,id)=Fixture();
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            s.State.Map[cell].Tilled=true;
+            _=s.Inventory.Spawn("wheat_seed",cell);
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
+            var options=s.Actions.All.Where(action=>!action.RequiresWork||context.CanWork)
+                .SelectMany(action=>action.Options(context)).ToList();
+            var plan=s.Planner.Find(context,options,new DesiredState("food.sown","test",1));
+            Assert(plan is not null,"planner could not reuse a seed lying on the farm");
+            Assert(plan!.Steps.Any(x=>x.Action=="pickup"&&x.Argument=="wheat_seed"),"planner did not pick up the seed");
+            Assert(plan.Steps.Any(x=>x.Action=="sow"&&x.Argument=="wheat"),"planner did not resow wheat");
+        });
+        Test("eating revalidates food before committing the action", ()=>
+        {
+            var(s,id)=Fixture();
+            var action=new EatAction();
+            var step=new ActionStep { Argument="grain" };
+            Assert(!action.CanExecute(s,id,step,out var reason)&&reason=="еда больше недоступна",
+                "missing food was treated as executable");
+            Give(s,id,"grain");
+            Assert(action.CanExecute(s,id,step,out _),"available fresh food was rejected");
+        });
         Test("farms and building clearance cannot overlap", ()=>
         {
             var(s,id)=Fixture();

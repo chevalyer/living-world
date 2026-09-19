@@ -14,6 +14,15 @@ public sealed class EatAction : SimAction
             yield return op;
         }
     }
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
+    {
+        if(!base.CanExecute(s,actor,step,out reason))return false;
+        if(s.Definitions.Items.TryGetValue(step.Argument,out var definition)&&definition.Calories>0&&
+            s.Inventory.Items(actor).Any(id=>s.State.Entities.Get<ItemComponent>(id) is { } item&&
+                item.Definition==step.Argument&&item.Freshness>=.1f))return true;
+        reason="еда больше недоступна";
+        return false;
+    }
     public override bool Execute(SimulationSession s,int actor,ActionStep step)
     {
         var id=s.Inventory.Items(actor)
