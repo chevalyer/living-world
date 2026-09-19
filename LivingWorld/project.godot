@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Living World"
-config/version="0.7.0-alpha"
+config/version="0.8.0-alpha"
 run/main_scene="res://Presentation/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 
