@@ -1,0 +1,12 @@
+{
+  "id": "turnip_seed",
+  "name": "семена репы",
+  "material": "organic",
+  "mass": 0.03,
+  "volume": 0.04,
+  "shelfLifeDays": 365,
+  "tags": [
+    "seed",
+    "farming"
+  ]
+}

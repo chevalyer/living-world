@@ -1,0 +1,26 @@
+{
+  "id": "wool_trousers",
+  "name": "шерстяные штаны",
+  "material": "wool",
+  "mass": 0.8,
+  "volume": 1.1,
+  "slots": [
+    "legs"
+  ],
+  "coverage": 0.34,
+  "thickness": 1.5,
+  "comfort": 0.88,
+  "recipes": [
+    {
+      "id": "wool_trousers",
+      "name": "связать шерстяные штаны",
+      "inputs": {
+        "wool_yarn": 4
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 65
+    }
+  ]
+}

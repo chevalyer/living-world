@@ -1,0 +1,22 @@
+{
+  "id": "flax",
+  "name": "лён",
+  "kind": "crop",
+  "product": "fiber",
+  "seed": "flax_seed",
+  "seedYield": 3,
+  "minTemperature": 6,
+  "maxTemperature": 30,
+  "frostTolerance": -4,
+  "minMoisture": 0.3,
+  "growthDays": 50,
+  "yield": 7,
+  "regrowthDays": 20,
+  "lifespanDays": 170,
+  "color": "#78945e",
+  "fruitColor": "#91a9d2",
+  "spawnWeight": 0.1,
+  "optimalTemperature": 16,
+  "shape": "grass",
+  "harvestRemovesPlant": true
+}

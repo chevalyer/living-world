@@ -24,11 +24,18 @@ public static class DefinitionFingerprint
         building.Id,building.Name,building.Material,building.Resource,building.UnitsPerElement,
         building.Size,building.WorkMinutes));
 
+    public static string LegacyPlantHash(PlantDefinition plant)=>Hash(new LegacyPlantDefinition(
+        plant.Id,plant.Name,plant.Kind,plant.Product,plant.MinTemperature,plant.MaxTemperature,
+        plant.FrostTolerance,plant.MinMoisture,plant.GrowthDays,plant.Yield,plant.RegrowthDays,
+        plant.LifespanDays,plant.Color,plant.SpawnWeight,plant.OptimalTemperature,plant.Shape,plant.FruitColor));
+
     public static string LegacyFingerprint(DefinitionCatalog catalog)
     {
         var manifest=Manifest(catalog);
         foreach(var building in catalog.Buildings.Values)
             manifest["building:"+building.Id]=LegacyBuildingHash(building);
+        foreach(var plant in catalog.Plants.Values)
+            manifest["plant:"+plant.Id]=LegacyPlantHash(plant);
         return OfManifest(manifest);
     }
 
@@ -37,4 +44,9 @@ public static class DefinitionFingerprint
 
     private sealed record LegacyBuildingDefinition(
         string Id,string Name,string Material,string Resource,int UnitsPerElement,int Size,float WorkMinutes);
+
+    private sealed record LegacyPlantDefinition(
+        string Id,string Name,string Kind,string Product,float MinTemperature,float MaxTemperature,
+        float FrostTolerance,float MinMoisture,float GrowthDays,float Yield,float RegrowthDays,
+        float LifespanDays,string Color,float SpawnWeight,float OptimalTemperature,string Shape,string FruitColor);
 }

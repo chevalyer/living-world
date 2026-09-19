@@ -5,6 +5,9 @@ public sealed record PlantDefinition
     public string Name { get; init; } = "";
     public string Kind { get; init; } = "";
     public string Product { get; init; } = "";
+    public string Seed { get; init; } = "";
+    public int SeedYield { get; init; }
+    public bool HarvestRemovesPlant { get; init; }
     public float MinTemperature { get; init; }
     public float MaxTemperature { get; init; } = 35;
     public float FrostTolerance { get; init; } = -25;

@@ -87,6 +87,12 @@ public sealed class SaveService
                     if(definitions.Buildings.TryGetValue(id,out var building)&&
                        DefinitionFingerprint.LegacyBuildingHash(building)==entry.Value)continue;
                 }
+                if(entry.Key.StartsWith("plant:",StringComparison.Ordinal))
+                {
+                    var id=entry.Key["plant:".Length..];
+                    if(definitions.Plants.TryGetValue(id,out var plant)&&
+                       DefinitionFingerprint.LegacyPlantHash(plant)==entry.Value)continue;
+                }
                 throw new InvalidDataException("Изменено старое определение "+entry.Key+"; нужна миграция.");
             }
         }

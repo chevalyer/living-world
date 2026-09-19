@@ -1,0 +1,22 @@
+{
+  "id": "oat",
+  "name": "овёс",
+  "kind": "crop",
+  "product": "oat_grain",
+  "seed": "oat_seed",
+  "seedYield": 3,
+  "minTemperature": 4,
+  "maxTemperature": 30,
+  "frostTolerance": -7,
+  "minMoisture": 0.32,
+  "growthDays": 50,
+  "yield": 12,
+  "regrowthDays": 17,
+  "lifespanDays": 185,
+  "color": "#a99c72",
+  "fruitColor": "#d6ca96",
+  "spawnWeight": 0.14,
+  "optimalTemperature": 14,
+  "shape": "grass",
+  "harvestRemovesPlant": true
+}

@@ -96,6 +96,35 @@ public static class TestSuite
             var(s, id)=Fixture(); s.State.Entities.Get<BodyComponent>(id).Strength=0; Assert(!new BuildAction().CanExecute(s, id, new(), out _), "zero strength ignored");
         });
         Test("plants stop growing in cold", ()=>Equal(0f, PlantSystem.GrowthRate(D.Plants["raspberry_bush"], -10, .8f, 1)));
+        Test("every crop has its own physical seed item", ()=>
+        {
+            var crops=D.Plants.Values.Where(x=>x.Kind=="crop").ToArray();
+            Equal(crops.Length,crops.Select(x=>x.Seed).Distinct(StringComparer.Ordinal).Count());
+            Assert(crops.All(x=>x.Seed.Length>0&&D.Items.ContainsKey(x.Seed)&&x.SeedYield>0),"invalid crop seed definition");
+        });
+        Test("sowing consumes the crop specific seed", ()=>
+        {
+            var(s,id)=Fixture(); Give(s,id,"wheat_seed"); Give(s,id,"carrot_seed");
+            Assert(new SowAction().Execute(s,id,new(){Argument="wheat"}),"wheat seed was not sown");
+            Equal(0,s.Inventory.Count(id,"wheat_seed"));
+            Equal(1,s.Inventory.Count(id,"carrot_seed"));
+            Assert(s.State.Entities.Store<PlantComponent>().All.Any(x=>x.Value.Definition=="wheat"&&x.Value.Cultivator==id),
+                "wrong crop was planted");
+        });
+        Test("a different crop seed cannot substitute for wheat seed", ()=>
+        {
+            var(s,id)=Fixture(); Give(s,id,"carrot_seed");
+            Assert(!new SowAction().Execute(s,id,new(){Argument="wheat"}),"carrot seed planted wheat");
+            Equal(1,s.Inventory.Count(id,"carrot_seed"));
+        });
+        Test("harvesting a crop returns its own seed", ()=>
+        {
+            var(s,id)=Fixture(); var crop=Plant(s,new(6,5),"carrot",3);
+            Assert(new HarvestAction().Execute(s,id,new(){Target=crop,Position=new(6,5)}),"carrot harvest failed");
+            Assert(s.State.Entities.Store<ItemComponent>().All.Any(x=>x.Value.Definition=="carrot_seed"),"crop produced no carrot seed");
+            Assert(!s.State.Entities.Store<ItemComponent>().All.Any(x=>x.Value.Definition=="wheat_seed"),"crop produced another plant seed");
+            Assert(!s.State.Entities.Exists(crop),"fully harvested annual crop remained in the world");
+        });
         Test("plant species fixes harvest product", ()=>
         {
             var(s, id)=Fixture(); var bush=Plant(s, new(6, 5), "blueberry_bush", 6); Assert(new HarvestAction().Execute(s, id, new()

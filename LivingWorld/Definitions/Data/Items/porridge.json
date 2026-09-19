@@ -1,0 +1,60 @@
+{
+  "id": "porridge",
+  "name": "каша",
+  "material": "organic",
+  "mass": 0.55,
+  "volume": 0.7,
+  "calories": 680,
+  "water": 0.22,
+  "shelfLifeDays": 2,
+  "tags": [
+    "food",
+    "cooked"
+  ],
+  "recipes": [
+    {
+      "id": "porridge_wheat",
+      "name": "сварить пшеничную кашу",
+      "inputs": {
+        "grain": 2
+      },
+      "operation": "heat",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 30
+    },
+    {
+      "id": "porridge_barley",
+      "name": "сварить ячменную кашу",
+      "inputs": {
+        "barley_grain": 2
+      },
+      "operation": "heat",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 30
+    },
+    {
+      "id": "porridge_oat",
+      "name": "сварить овсяную кашу",
+      "inputs": {
+        "oat_grain": 2
+      },
+      "operation": "heat",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 30
+    },
+    {
+      "id": "porridge_millet",
+      "name": "сварить пшённую кашу",
+      "inputs": {
+        "millet_grain": 2
+      },
+      "operation": "heat",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 30
+    }
+  ]
+}

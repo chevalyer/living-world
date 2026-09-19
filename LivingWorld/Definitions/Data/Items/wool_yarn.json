@@ -1,0 +1,25 @@
+{
+  "id": "wool_yarn",
+  "name": "шерстяная пряжа",
+  "material": "wool",
+  "mass": 0.18,
+  "volume": 0.25,
+  "tags": [
+    "fabric",
+    "material"
+  ],
+  "recipes": [
+    {
+      "id": "wool_yarn",
+      "name": "спрясть шерсть",
+      "inputs": {
+        "wool": 1
+      },
+      "operation": "spin",
+      "count": 3,
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 25
+    }
+  ]
+}

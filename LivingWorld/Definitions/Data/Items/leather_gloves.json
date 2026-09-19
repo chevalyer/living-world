@@ -1,0 +1,26 @@
+{
+  "id": "leather_gloves",
+  "name": "кожаные перчатки",
+  "material": "leather",
+  "mass": 0.32,
+  "volume": 0.4,
+  "slots": [
+    "hands"
+  ],
+  "coverage": 0.08,
+  "thickness": 1.25,
+  "comfort": 0.78,
+  "recipes": [
+    {
+      "id": "leather_gloves",
+      "name": "сшить кожаные перчатки",
+      "inputs": {
+        "leather_strip": 2
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 45
+    }
+  ]
+}
