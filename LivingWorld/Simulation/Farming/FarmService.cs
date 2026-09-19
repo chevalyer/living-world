@@ -114,11 +114,16 @@ public static class FarmService
         if (farmCell is null||s.Entities.Try<PositionComponent>(cellId)?.Tile!=cell)return false;
         var plot=s.Entities.Try<FarmPlotComponent>(farmCell.Plot);
         if (plot is null||!plot.Cells.Contains(cell)||s.Map[cell].FarmPlot!=farmCell.Plot||!s.Map[cell].Tilled||
-            plant.Kind!="crop"||plant.Seed.Length==0||!session.Definitions.Items.ContainsKey(plant.Seed)||
-            session.Inventory.Count(actor,plant.Seed)<2||HasPlant(session,cell))return false;
+            plant.Kind!="crop"||plant.Seed.Length==0||!session.Definitions.Items.ContainsKey(plant.Seed)||HasPlant(session,cell))return false;
+        var seedCount=session.Inventory.Count(actor,plant.Seed);
+        if(seedCount<1)return false;
         if (s.Entities.Get<PositionComponent>(actor).Tile.Distance(cell)>1)return false;
         var air=EnvironmentQueries.Air(s,cell);
-        return air>=plant.MinTemperature&&air<=plant.MaxTemperature;
+        if(air<plant.MinTemperature||air>plant.MaxTemperature)return false;
+        if(seedCount>=2)return true;
+        var sameCropAlive=plot.Cells.Any(p=>session.Spatial.Query(p,0).Any(id=>
+            s.Entities.Try<PlantComponent>(id) is { } existing&&existing.Definition==plant.Id));
+        return !sameCropAlive&&air>=plant.MinTemperature+4&&air<=plant.MaxTemperature-4;
     }
 
     public static bool Sow(SimulationSession session,int actor,int cellId,GridPoint cell,string plantId)

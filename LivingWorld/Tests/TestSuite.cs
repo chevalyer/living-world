@@ -301,7 +301,7 @@ public static class TestSuite
             Give(s,id,"grain");
             Assert(action.CanExecute(s,id,step,out _),"available fresh food was rejected");
         });
-        Test("sowing preserves one physical seed as reserve", ()=>
+        Test("seed reserve can restart a lost crop safely", ()=>
         {
             var(s,id)=Fixture();
             Give(s,id,"wheat_seed"); Give(s,id,"wheat_seed");
@@ -313,12 +313,20 @@ public static class TestSuite
             Assert(new SowAction().Execute(s,id,new(){Target=first,Position=origin,Argument="wheat"}),
                 "first sow with a reserve failed");
             Equal(1,s.Inventory.Count(id,"wheat_seed"));
+
             var secondPoint=new GridPoint(6,5);
             s.State.Map[secondPoint].Tilled=true;
             var second=FarmCell(s,plot,secondPoint);
             Assert(!new SowAction().Execute(s,id,new(){Target=second,Position=secondPoint,Argument="wheat"}),
-                "last physical seed was consumed");
+                "last reserve seed was spent while the crop was still alive");
             Equal(1,s.Inventory.Count(id,"wheat_seed"));
+
+            var wheat=s.State.Entities.Store<PlantComponent>().All.Single(x=>x.Value.Definition=="wheat").Key;
+            s.State.Entities.Remove(wheat);
+            s.Spatial.Remove(wheat);
+            Assert(new SowAction().Execute(s,id,new(){Target=second,Position=secondPoint,Argument="wheat"}),
+                "last reserve seed could not restart an extinct crop in safe weather");
+            Equal(0,s.Inventory.Count(id,"wheat_seed"));
         });
         Test("founders receive a renewable food seed reserve", ()=>
         {
