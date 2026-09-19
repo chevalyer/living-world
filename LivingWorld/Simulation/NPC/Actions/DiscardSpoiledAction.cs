@@ -18,6 +18,30 @@ public sealed class DiscardSpoiledAction : SimAction
             yield return op;
         }
     }
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
+    {
+        if(!base.CanExecute(s,actor,step,out reason))return false;
+        var e=s.State.Entities;
+        if(e.Try<ItemComponent>(step.Target) is { } item)
+        {
+            if(item.Holder==actor&&item.Freshness<.1f&&s.Definitions.Items[item.Definition].Calories>0)return true;
+            reason="предмет уже забрали";
+            return false;
+        }
+        if(!e.Has<StorageComponent>(step.Target)||!StorageService.CanUse(s,actor,step.Target))
+        {
+            reason="предмет уже забрали";
+            return false;
+        }
+        var spoiled=s.Inventory.Items(step.Target).Any(id=>
+        {
+            var stored=e.Get<ItemComponent>(id);
+            return s.Definitions.Items[stored.Definition].Calories>0&&stored.Freshness<.1f;
+        });
+        if(spoiled)return true;
+        reason="предмет уже забрали";
+        return false;
+    }
     public override bool Execute(SimulationSession s,int actor,ActionStep step)
     {
         var e=s.State.Entities;
