@@ -16,7 +16,7 @@ public sealed class VegetationPass : IGenerationPass
             else
             {
                 if (tile.Biome == Biome.Forest) roll = (roll - .16) / .84;
-                kind = roll < .105 ? "bush" : roll < .14 ? "grass" : roll < .17 ? "crop" : roll < .205 ? "flower" : null;
+                kind = roll < .105 ? "bush" : roll < .14 ? "grass" : roll < .175 ? "flower" : null;
             }
             if (kind is null) continue;
             var candidates = definitions.Plants.Values

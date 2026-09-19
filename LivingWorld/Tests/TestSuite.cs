@@ -143,6 +143,143 @@ public static class TestSuite
             var(s, id)=Fixture(); s.State.Entities.Get<BodyComponent>(id).Strength=0; Assert(!new BuildAction().CanExecute(s, id, new(), out _), "zero strength ignored");
         });
         Test("plants stop growing in cold", ()=>Equal(0f, PlantSystem.GrowthRate(D.Plants["raspberry_bush"], -10, .8f, 1)));
+        Test("every crop has its own physical seed item", ()=>
+        {
+            var crops=D.Plants.Values.Where(x=>x.Kind=="crop").ToArray();
+            Equal(crops.Length,crops.Select(x=>x.Seed).Distinct(StringComparer.Ordinal).Count());
+            Assert(crops.All(x=>x.Seed.Length>0&&D.Items.ContainsKey(x.Seed)&&x.SeedYield>0),"invalid crop seed definition");
+        });
+        Test("sowing consumes the crop specific seed", ()=>
+        {
+            var(s,id)=Fixture(); Give(s,id,"wheat_seed"); Give(s,id,"carrot_seed");
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            s.State.Map[cell].Tilled=true;
+            var farmCell=FarmCell(s,plot,cell);
+            Assert(new SowAction().Execute(s,id,new(){Target=farmCell,Position=cell,Argument="wheat"}),"wheat seed was not sown");
+            Equal(0,s.Inventory.Count(id,"wheat_seed"));
+            Equal(1,s.Inventory.Count(id,"carrot_seed"));
+            Assert(s.State.Entities.Store<PlantComponent>().All.Any(x=>x.Value.Definition=="wheat"&&x.Value.Cultivator==id),
+                "wrong crop was planted");
+        });
+        Test("a different crop seed cannot substitute for wheat seed", ()=>
+        {
+            var(s,id)=Fixture(); Give(s,id,"carrot_seed");
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            s.State.Map[cell].Tilled=true;
+            var farmCell=FarmCell(s,plot,cell);
+            Assert(!new SowAction().Execute(s,id,new(){Target=farmCell,Position=cell,Argument="wheat"}),"carrot seed planted wheat");
+            Equal(1,s.Inventory.Count(id,"carrot_seed"));
+        });
+        Test("crops cannot be sown outside farm plots", ()=>
+        {
+            var(s,id)=Fixture(); Give(s,id,"wheat_seed");
+            var p=s.State.Entities.Get<PositionComponent>(id).Tile;
+            Assert(!new SowAction().Execute(s,id,new(){Position=p,Argument="wheat"}),"crop was sown on ordinary ground");
+            Equal(1,s.Inventory.Count(id,"wheat_seed"));
+        });
+        Test("farm soil must be tilled with a tilling tool", ()=>
+        {
+            var(s,id)=Fixture();
+            var cell=new GridPoint(5,5);
+            var plot=FarmService.Start(s,id,cell);
+            Assert(plot!=0,"farm plot was not created");
+            var farmCell=FarmCell(s,plot,cell);
+            Assert(!new TillAction().Execute(s,id,new(){Target=farmCell,Position=cell}),"soil was tilled without a tilling tool");
+            Give(s,id,"stone_hoe");
+            Assert(new TillAction().Execute(s,id,new(){Target=farmCell,Position=cell}),"tilling failed with stone hoe");
+            Assert(s.State.Map[cell].Tilled,"farm cell was not marked tilled");
+            Assert(!s.State.Map[new(6,5)].Tilled,"tilling changed a different farm cell");
+        });
+        Test("planner can craft a hoe before tilling", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            Give(s,id,"log");
+            Give(s,id,"granite");
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            var options=s.Actions.All.Where(action=>!action.RequiresWork||context.CanWork)
+                .SelectMany(action=>action.Options(context)).ToList();
+            var plan=s.Planner.Find(context,options,new DesiredState("tilled","test",1));
+            Assert(plan is not null,"planner could not prepare a farm from raw materials");
+            Assert(plan!.Steps.Any(x=>x.Action=="craft"&&x.Argument=="stone_hoe"),"planner skipped crafting the required hoe");
+            Assert(plan.Steps.Any(x=>x.Action=="till"),"planner produced no tilling step");
+        });
+        Test("farm plots expose physical cells through perception", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var cells=s.State.Entities.Get<MemoryComponent>(id).Observations
+                .Where(x=>x.Kind=="farm_cell"&&s.State.Entities.Try<FarmCellComponent>(x.Entity)?.Plot==plot).ToArray();
+            Equal(FarmService.Width*FarmService.Height,cells.Length);
+            Assert(cells.All(x=>x.Definition=="untilled"),"new farm contains prepared or planted cells");
+        });
+        Test("harvesting a crop returns its seed and resets the farm cell", ()=>
+        {
+            var(s,id)=Fixture();
+            var cell=new GridPoint(6,5);
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            var farmCell=FarmCell(s,plot,cell);
+            var crop=Plant(s,cell,"carrot",3);
+            Assert(new HarvestAction().Execute(s,id,new(){Target=crop,Position=cell}),"carrot harvest failed");
+            Assert(!s.State.Entities.Exists(crop),"annual crop remained after harvest");
+            Equal("untilled",FarmService.CellState(s,farmCell));
+            Assert(s.State.Entities.Store<ItemComponent>().All.Any(x=>x.Value.Definition=="carrot_seed"),"crop produced no carrot seed");
+            Assert(!s.State.Entities.Store<ItemComponent>().All.Any(x=>x.Value.Definition=="wheat_seed"),"crop produced another plant seed");
+        });
+        Test("different farm cells can be reserved by different NPCs", ()=>
+        {
+            var(s,first)=Fixture();
+            var second=Adult(s,new(6,5));
+            var plot=FarmService.Start(s,first,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            var a=FarmCell(s,plot,new(5,5));
+            var b=FarmCell(s,plot,new(6,5));
+            Assert(a!=b,"farm cells share one reservation target");
+            Assert(s.Reservations.Claim(a,first,s.State.Clock.Tick),"first cell reservation failed");
+            Assert(s.Reservations.Claim(b,second,s.State.Clock.Tick),"second cell should remain independently reservable");
+            Assert(!s.Reservations.Claim(a,second,s.State.Clock.Tick),"same farm cell was double reserved");
+        });
+        Test("wild crops do not suppress normal farm work", ()=>
+        {
+            var(s,id)=Fixture();
+            var plot=FarmService.Start(s,id,new(5,5));
+            Assert(plot!=0,"farm plot was not created");
+            _=Plant(s,new(10,5),"carrot",3);
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id,findBuildSite:false,findFarmSite:false);
+            Assert(new ResourceEvaluator().Evaluate(context).Any(x=>x.Fact=="tilled"),
+                "a wild crop incorrectly satisfied the farming goal");
+        });
+        Test("farms and building clearance cannot overlap", ()=>
+        {
+            var(s,id)=Fixture();
+            var origin=new GridPoint(7,7);
+            var plot=FarmService.Start(s,id,origin);
+            Assert(plot!=0,"farm plot was not created");
+            var layout=BuildingService.CreateLayout(s,id,new(8,8),D.Buildings["wooden_cabin"]);
+            Assert(!BuildingService.CanPlace(s,id,layout),"house layout overlapped an existing farm");
+
+            var(s2,id2)=Fixture();
+            var project=s2.State.Entities.Create();
+            s2.State.Entities.Set(project,new PositionComponent { Tile=new(12,12) });
+            s2.State.Entities.Set(project,new ConstructionComponent
+            {
+                Definition="wooden_cabin",
+                Elements=[new(new GridPoint(12,12),"floor")],
+                Clearance=FarmService.Cells(origin).ToList()
+            });
+            s2.Spatial.Add(project,new(12,12));
+            Assert(!FarmService.CanPlace(s2,origin),"farm overlapped construction clearance");
+        });
         Test("plant species fixes harvest product", ()=>
         {
             var(s, id)=Fixture(); var bush=Plant(s, new(6, 5), "blueberry_bush", 6); Assert(new HarvestAction().Execute(s, id, new()
@@ -212,11 +349,57 @@ public static class TestSuite
         });
         Test("closed roofed walls form a room", ()=>
         {
-            var(s, id)=Fixture(); var project=BuildHome(s, id); new RoomSystem().Update(s); Assert(s.State.Rooms.Count>0, "no room"); Assert(s.State.Entities.Get<ConstructionComponent>(project).Finished, "unfinished"); Assert(s.State.Map.Walkable(new(5, 7)), "door blocks movement");
+            var(s, id)=Fixture(); var project=BuildHome(s, id); new RoomSystem().Update(s);
+            var construction=s.State.Entities.Get<ConstructionComponent>(project);
+            Assert(s.State.Rooms.Count>0, "no room");
+            Assert(construction.Finished, "unfinished");
+            Assert(s.State.Map.Walkable(construction.Door), "door blocks movement");
         });
         Test("opening wall invalidates room", ()=>
         {
-            var(s, id)=Fixture(); BuildHome(s, id); new RoomSystem().Update(s); s.State.Map[new(3, 5)].Wall=0; s.RoomsDirty=true; new RoomSystem().Update(s); Equal(0, s.State.Rooms.Count);
+            var(s, id)=Fixture(); var project=BuildHome(s, id); new RoomSystem().Update(s);
+            var wall=s.State.Entities.Get<ConstructionComponent>(project).Elements.First(x=>x.Kind=="wall").Position;
+            s.State.Map[wall].Wall=0; s.RoomsDirty=true; new RoomSystem().Update(s); Equal(0, s.State.Rooms.Count);
+        });
+        Test("procedural home layouts stay bounded connected and useful", ()=>
+        {
+            var(s,id)=Fixture();
+            var definition=D.Buildings["wooden_cabin"] with
+            {
+                MinWidth=7,MaxWidth=7,MinHeight=7,MaxHeight=7,MaxInteriorArea=25,ShapeVariety=1
+            };
+            var layout=BuildingService.CreateLayout(s,id,new(11,11),definition);
+            Assert(layout.Interior.Count>=6&&layout.Interior.Count<=definition.MaxInteriorArea,"invalid interior size");
+            Assert(layout.Interior.Count<25,"shape stayed a full template rectangle");
+            Assert(Connected(layout.Interior),"interior is disconnected");
+            Assert(layout.Boundary.All(p=>layout.Interior.Any(i=>i.Distance(p)==1)),"meaningless wall without interior");
+        });
+        Test("home doors can face different sides", ()=>
+        {
+            var(s,id)=Fixture();
+            var definition=D.Buildings["wooden_cabin"] with { MinWidth=7,MaxWidth=7,MinHeight=7,MaxHeight=7,ShapeVariety=0 };
+            var center=new GridPoint(10,10);
+            var sides=new HashSet<string>();
+            foreach(var actorPosition in new[]{new GridPoint(10,1),new GridPoint(18,10),new GridPoint(10,18),new GridPoint(2,10)})
+            {
+                s.State.Entities.Get<PositionComponent>(id).Tile=actorPosition;
+                var layout=BuildingService.CreateLayout(s,id,center,definition);
+                var minX=layout.Footprint.Min(p=>p.X); var maxX=layout.Footprint.Max(p=>p.X);
+                var minY=layout.Footprint.Min(p=>p.Y); var maxY=layout.Footprint.Max(p=>p.Y);
+                sides.Add(layout.Door.X==minX?"left":layout.Door.X==maxX?"right":
+                    layout.Door.Y==minY?"top":layout.Door.Y==maxY?"bottom":"other");
+            }
+            Assert(sides.Count>=3,"doors stayed locked to one side");
+        });
+        Test("building clearance prevents houses from touching or blocking entrances", ()=>
+        {
+            var(s,id)=Fixture();
+            var first=BuildingService.Start(s,id,new(8,8),"wooden_cabin");
+            Assert(first!=0,"first project failed");
+            var project=s.State.Entities.Get<ConstructionComponent>(first);
+            Assert(project.Clearance.Contains(project.DoorOutside),"entrance approach is not reserved");
+            var nearby=BuildingService.CreateLayout(s,id,new(12,8),D.Buildings["wooden_cabin"]);
+            Assert(!BuildingService.CanPlace(s,id,nearby),"nearby house ignored reserved clearance");
         });
         Test("communal stock retains physical ownership", ()=>
         {
@@ -251,6 +434,47 @@ public static class TestSuite
             Equal(2, a[0].Homes);
             Equal(2, a[0].Members);
             Assert(a[0].MinX<=4&&a[0].MaxX>=10, "settlement bounds exclude homes");
+            Assert(a[0].Areas.All(area=>area.MaxX-area.MinX+1==7&&area.MaxY-area.MinY+1==7),
+                "settlement cells are not fixed 7x7 blocks");
+        });
+        Test("settlement boundary follows exact generated house footprint", ()=>
+        {
+            var(s, first)=Fixture();
+            var home=FinishedProject(s,new(10,10));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=home;
+            s.State.Entities.Get<ConstructionComponent>(home).Footprint=[
+                new(5,10),new(6,10),new(7,10),new(8,10),new(9,10),new(10,10),
+                new(11,10),new(12,10),new(13,10),new(14,10),new(15,10)
+            ];
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Assert(settlement.Contains(new(15,10)),"generated house footprint was clipped to legacy Size");
+        });
+        Test("settlement boundary does not fill empty space between linked homes", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s,new(2,2));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s,new(19,2));
+            var homeB=FinishedProject(s,new(19,2));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Assert(settlement.Areas.Any(area=>area.Contains(new(2,2))),"first home missing from boundary");
+            Assert(settlement.Areas.Any(area=>area.Contains(new(19,2))),"second home missing from boundary");
+            Assert(!settlement.Contains(new(8,2)),"empty 7x7 block was incorrectly included");
+        });
+        Test("l shaped settlement leaves the empty corner outside", ()=>
+        {
+            var(s, first)=Fixture();
+            var homeA=FinishedProject(s,new(2,2));
+            s.State.Entities.Get<FamilyComponent>(first).HomeProject=homeA;
+            var second=Adult(s,new(19,2));
+            var homeB=FinishedProject(s,new(19,2));
+            s.State.Entities.Get<FamilyComponent>(second).HomeProject=homeB;
+            var third=Adult(s,new(2,19));
+            var homeC=FinishedProject(s,new(2,19));
+            s.State.Entities.Get<FamilyComponent>(third).HomeProject=homeC;
+            var settlement=SettlementAnalyzer.DescribeAll(s).Single();
+            Assert(!settlement.Contains(new(8,8)),"L-shaped settlement filled its empty corner");
         });
         Test("settlement analyzer separates distant homes", ()=>
         {
@@ -316,6 +540,7 @@ public static class TestSuite
             var snapshot=new LivingWorld.Presentation.RenderSnapshotBuilder().Capture(s, 1, true, 1, 0, new(), force:true);
             Equal(1, snapshot.Settlements.Count);
             Equal(1, snapshot.Settlements[0].Homes);
+            Assert(snapshot.Settlements[0].Areas.Count>0,"settlement areas missing from render snapshot");
             Assert(snapshot.People.Any(x=>x.Id==first&&!string.IsNullOrWhiteSpace(x.Name)), "person name missing from render snapshot");
         });
         Test("fatal dehydration remains the recorded cause after drinking", ()=>
@@ -1073,6 +1298,13 @@ public static class TestSuite
         Assert(s.Inventory.PickUp(id, item), "fixture pickup failed");
         return item;
     }
+    private static int FarmCell(SimulationSession s,int plot,GridPoint p)
+    {
+        return s.State.Entities.Store<FarmCellComponent>().All
+            .Where(x=>x.Value.Plot==plot)
+            .Select(x=>(Id:x.Key,Position:s.State.Entities.Get<PositionComponent>(x.Key).Tile))
+            .Single(x=>x.Position==p).Id;
+    }
     private static int Plant(SimulationSession s, GridPoint p, string definition, int amount)
     {
         var id=s.State.Entities.Create();
@@ -1087,6 +1319,23 @@ public static class TestSuite
         s.Spatial.Add(id, p);
         return id;
     }
+    private static bool Connected(IEnumerable<GridPoint> cells)
+    {
+        var set=cells.ToHashSet();
+        if(set.Count==0)return false;
+        var seen=new HashSet<GridPoint>();
+        var queue=new Queue<GridPoint>();
+        var first=set.First();
+        seen.Add(first); queue.Enqueue(first);
+        while(queue.TryDequeue(out var current))
+            foreach(var direction in GridPoint.Cardinal)
+            {
+                var next=current+direction;
+                if(set.Contains(next)&&seen.Add(next))queue.Enqueue(next);
+            }
+        return seen.Count==set.Count;
+    }
+
     private static int FinishedProject(SimulationSession s, GridPoint position)
     {
         var id=s.State.Entities.Create();

@@ -1,0 +1,25 @@
+{
+  "id": "thread",
+  "name": "нить",
+  "material": "flax",
+  "mass": 0.05,
+  "volume": 0.08,
+  "durability": 30,
+  "tags": [
+    "material",
+    "fiber"
+  ],
+  "recipes": [
+    {
+      "id": "thread",
+      "name": "скрутить нить",
+      "inputs": {
+        "fiber": 1
+      },
+      "count": 3,
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 12
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "flax_seed",
+  "name": "семена льна",
+  "material": "organic",
+  "mass": 0.03,
+  "volume": 0.04,
+  "shelfLifeDays": 365,
+  "tags": [
+    "seed",
+    "farming"
+  ]
+}

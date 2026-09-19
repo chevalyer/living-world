@@ -1,0 +1,14 @@
+{
+  "id": "onion",
+  "name": "лук",
+  "material": "organic",
+  "mass": 0.18,
+  "volume": 0.22,
+  "calories": 120,
+  "water": 0.12,
+  "shelfLifeDays": 35,
+  "tags": [
+    "food",
+    "vegetable"
+  ]
+}

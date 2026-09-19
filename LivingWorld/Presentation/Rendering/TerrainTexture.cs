@@ -85,6 +85,8 @@ public static class TerrainTexture
             }
         };
         if (tile.Water != WaterKind.None && tile.Ice > .03f) color = color.Lerp(new Color("#b8d2d5"), Math.Min(1, tile.Ice / .2f));
+        if (tile.Water == WaterKind.None && tile.Farm)
+            color=color.Lerp(new Color(tile.Tilled?"#70543a":"#857252"),tile.Tilled ? .78f : .38f);
         if (tile.Water == WaterKind.None) color = color.Lerp(new Color("#d3d8cb"), tile.Snow * .9f);
         return color;
     }

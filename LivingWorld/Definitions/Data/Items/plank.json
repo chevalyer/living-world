@@ -3,6 +3,31 @@
   "name": "доска",
   "material": "wood",
   "mass": 0.8,
+  "volume": 1.1,
+  "durability": 80,
+  "tags": [
+    "construction",
+    "material"
+  ],
+  "recipes": [
+    {
+      "id": "plank",
+      "name": "сделать доски",
+      "inputs": {
+        "log": 1
+      },
+      "count": 2,
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 25
+    }
+  ]
+}
+{
+  "id": "plank",
+  "name": "доска",
+  "material": "wood",
+  "mass": 0.8,
   "volume": 1,
   "durability": 100,
   "tags": [

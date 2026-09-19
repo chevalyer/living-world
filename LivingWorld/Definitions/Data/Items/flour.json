@@ -2,6 +2,66 @@
   "id": "flour",
   "name": "мука",
   "material": "organic",
+  "mass": 0.45,
+  "volume": 0.6,
+  "calories": 520,
+  "water": 0.02,
+  "shelfLifeDays": 90,
+  "tags": [
+    "food",
+    "ingredient"
+  ],
+  "recipes": [
+    {
+      "id": "flour_wheat",
+      "name": "смолоть пшеничную муку",
+      "inputs": {
+        "grain": 2
+      },
+      "operation": "grind",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 20
+    },
+    {
+      "id": "flour_barley",
+      "name": "смолоть ячменную муку",
+      "inputs": {
+        "barley_grain": 2
+      },
+      "operation": "grind",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 20
+    },
+    {
+      "id": "flour_oat",
+      "name": "смолоть овсяную муку",
+      "inputs": {
+        "oat_grain": 2
+      },
+      "operation": "grind",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 20
+    },
+    {
+      "id": "flour_millet",
+      "name": "смолоть просяную муку",
+      "inputs": {
+        "millet_grain": 2
+      },
+      "operation": "grind",
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 20
+    }
+  ]
+}
+{
+  "id": "flour",
+  "name": "мука",
+  "material": "organic",
   "mass": 0.4,
   "volume": 0.6,
   "durability": 100,

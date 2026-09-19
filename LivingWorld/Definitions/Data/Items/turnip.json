@@ -1,0 +1,14 @@
+{
+  "id": "turnip",
+  "name": "репа",
+  "material": "organic",
+  "mass": 0.28,
+  "volume": 0.38,
+  "calories": 130,
+  "water": 0.17,
+  "shelfLifeDays": 25,
+  "tags": [
+    "food",
+    "vegetable"
+  ]
+}

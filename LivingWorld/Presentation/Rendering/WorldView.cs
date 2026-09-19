@@ -199,17 +199,27 @@ public partial class WorldView : Node2D
     {
         foreach (var settlement in world.Settlements)
         {
-            var rect=new Rect2(
-                new Vector2(settlement.MinX*TileSize,settlement.MinY*TileSize),
-                new Vector2((settlement.MaxX-settlement.MinX+1)*TileSize,(settlement.MaxY-settlement.MinY+1)*TileSize));
-            if (!rect.Intersects(visible))continue;
+            if (settlement.Areas.Count==0)continue;
             var selected=settlement.Anchor==Game.SelectedSettlement;
             var fill=selected?new Color(.92f,.71f,.36f,.15f):new Color(.53f,.72f,.56f,.09f);
             var border=selected?new Color(.98f,.79f,.43f,.95f):new Color(.62f,.79f,.63f,.72f);
-            DrawRect(rect,fill);
-            DrawRect(rect,border,false,selected?2f:1f);
+            var anyVisible=false;
+            foreach (var area in settlement.Areas)
+            {
+                var rect=new Rect2(
+                    new Vector2(area.X*TileSize,area.Y*TileSize),
+                    new Vector2(SettlementAnalyzer.SettlementCellSize*TileSize,SettlementAnalyzer.SettlementCellSize*TileSize));
+                if (!rect.Intersects(visible))continue;
+                anyVisible=true;
+                DrawRect(rect,fill);
+                DrawRect(rect,border,false,selected?2f:1f);
+            }
+            if (!anyVisible)continue;
+            var labelArea=settlement.Areas.OrderBy(x=>x.Y).ThenBy(x=>x.X).First();
             var fontSize=(int)Math.Clamp(14f/Game.Camera.Zoom.X,10,36);
-            var labelPosition=new Vector2(rect.Position.X+4/Game.Camera.Zoom.X,rect.Position.Y-6/Game.Camera.Zoom.X);
+            var labelPosition=new Vector2(
+                labelArea.X*TileSize+4/Game.Camera.Zoom.X,
+                labelArea.Y*TileSize-6/Game.Camera.Zoom.X);
             DrawString(ThemeDB.FallbackFont,labelPosition,settlement.Name,HorizontalAlignment.Left,-1,fontSize,border);
         }
     }
