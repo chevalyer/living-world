@@ -100,7 +100,9 @@ jobs:
           data=json.loads(Path("artifacts/lifecycle.json").read_text())
           assert data["simulation_tick"]==460800, "lifecycle simulation incomplete"
           assert data["population"]>0, "lifecycle population collapsed"
+          assert data["food_seed_items"]+data["food_crop_plants"]>0, "renewable food agriculture disappeared"
           print("lifecycle population", data["population"])
+          print("lifecycle food seeds", data["food_seed_items"], "live food crops", data["food_crop_plants"])
           print("lifecycle deaths", data["deaths"])
           print("lifecycle failures", data["action_failures"])
           print("lifecycle failure reasons", data["failure_reasons"])
