@@ -41,3 +41,5 @@ jobs:
           **Release candidate:** 03eaf3196b2ca4e132b8dc281a7369c7b35cbe67
           EOF
           gh release create v0.8.0-alpha             --repo chevalyer/living-world             --target 03eaf3196b2ca4e132b8dc281a7369c7b35cbe67             --title "v0.8.0-alpha"             --notes-file /tmp/notes.md
+
+# trigger
