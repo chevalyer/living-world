@@ -86,13 +86,13 @@ jobs:
           PY
 
       - name: 320 day lifecycle soak
-        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]') || contains(github.event.head_commit.message, '[soak320]')
         run: |
           dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
             --seed 1847 --size 64 --npcs 14 --ticks 460800 --json artifacts/lifecycle.json
 
       - name: inspect lifecycle
-        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]')
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]') || contains(github.event.head_commit.message, '[soak320]')
         run: |
           python3 - <<'PY'
           import json
