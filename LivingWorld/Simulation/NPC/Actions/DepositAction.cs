@@ -11,7 +11,8 @@ public sealed class DepositAction : SimAction
 
         // Food storage is survival behavior, not generosity. Offer only foods the NPC can
         // physically obtain from its inventory or current observations so planner branching stays bounded.
-        var foodCandidates=c.Inventory.Select(x=>x.Item.Definition)
+        var foodCandidates=c.Inventory.Where(x=>x.Item.Freshness>=.1f&&c.Definitions.Items[x.Item.Definition].Calories>0)
+            .Select(x=>x.Item.Definition)
             .Concat(c.Known.Where(x=>x.UnreachableUntil<=c.Tick&&x.Quantity>0&&x.Kind is "item" or "plant")
                 .Select(x=>x.Kind=="plant"?x.Product:x.Product))
             .Where(c.Definitions.Items.ContainsKey)
@@ -25,7 +26,8 @@ public sealed class DepositAction : SimAction
         {
             var op=Option(storage.Position,storage.Entity,definition,3);
             op.Requires=[new(Item(definition),1)];
-            op.Effects=[new(Item(definition),-1),new("food.stocked",1,true)];
+            op.Effects=[new(Item(definition),-1),
+                new("food.stocked",(int)MathF.Max(1,c.Definitions.Items[definition].Calories))];
             yield return op;
         }
 
