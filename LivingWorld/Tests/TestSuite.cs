@@ -805,6 +805,22 @@ public static class TestSuite
             var deposit=new DepositAction().Options(context).First(o=>o.Step.Target==storage&&o.Step.Argument=="grain");
             Equal(650,deposit.Effects.Single(x=>x.Fact=="food.stocked").Amount);
         });
+        Test("planner preserves perishable food with durable recipes", ()=>
+        {
+            var(s,id)=Fixture();
+            _=StorageService.Create(s,new(5,5),0);
+            Give(s,id,"raspberry"); Give(s,id,"raspberry");
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            var desire=new ResourceEvaluator().Evaluate(context).First(x=>x.Fact=="food.preserved");
+            var plan=s.Planner.Find(context,s.Actions.All.Where(a=>!a.RequiresWork||context.CanWork)
+                .SelectMany(a=>a.Options(context)).ToList(),desire);
+            Assert(plan is not null&&plan.Steps.Any(x=>x.Action=="craft"&&x.Argument=="dried_raspberry"),
+                "perishable berries were not preserved");
+            var porridge=new CraftAction().Options(context).First(o=>o.Step.Argument=="porridge_wheat");
+            Assert(!porridge.Effects.Any(x=>x.Fact=="food.preserved"),
+                "short lived porridge counted as preserved food");
+        });
         Test("storage serves fresh food and cleanup destroys spoiled food", ()=>
         {
             var(s,id)=Fixture();
