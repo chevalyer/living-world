@@ -29,7 +29,12 @@ public sealed class CraftAction : SimAction
                 if(recipe.Operation=="heat"&&station is null)op.Requires.Add(new("heat",1));
                 var outputDefinition=c.Definitions.Items[recipe.Output];
                 if(outputDefinition.Calories>0)
-                    op.Effects.Add(new("food.reserve",(int)MathF.Round(outputDefinition.Calories*recipe.Count),false));
+                {
+                    var outputCalories=(int)MathF.Round(outputDefinition.Calories*recipe.Count);
+                    op.Effects.Add(new("food.reserve",outputCalories,false));
+                    if(outputDefinition.ShelfLifeDays>=14||outputDefinition.Tags.Contains("preserved",StringComparer.Ordinal))
+                        op.Effects.Add(new("food.preserved",outputCalories,false));
+                }
                 foreach(var capability in outputDefinition.Tools)
                     op.Effects.Add(new("tool:"+capability.Key,Math.Max(1,(int)MathF.Floor(outputDefinition.Durability/2)),true));
                 op.Skill=recipe.Skill;
