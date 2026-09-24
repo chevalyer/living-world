@@ -18,6 +18,7 @@ public sealed class ResourceEvaluator : ISituationEvaluator
         if(storages.Length>0)
         {
             var storedCalories=c.StoredFoodCalories();
+            var preservedCalories=c.PreservedFoodCalories();
             var household=1+(c.Family.Partner!=0?1:0)+c.Family.Children.Count;
             // Needs consume about 960 definition-calories per person/day. A 45-day household
             // reserve lets harvests bridge cold periods instead of being eaten only hand-to-mouth.
@@ -28,6 +29,16 @@ public sealed class ResourceEvaluator : ISituationEvaluator
                 // Keep the goal incremental so a bounded planner can make steady progress toward a large seasonal reserve.
                 yield return new("food.stocked","запас пищи семьи на холодный период",.35f+.35f*missing,storedCalories+1);
             }
+
+            var perishableCalories=(int)MathF.Round(
+                c.Inventory.Where(x=>x.Item.Freshness>=.1f&&!c.IsPreservedFood(x.Item.Definition))
+                    .Sum(x=>c.Definitions.Items[x.Item.Definition].Calories*x.Item.Freshness)+
+                storages.Sum(storage=>storage.Items.Sum(item=>
+                    c.Definitions.Items.ContainsKey(item.Key)&&!c.IsPreservedFood(item.Key)
+                        ?c.Definitions.Items[item.Key].Calories*item.Value:0)));
+            if(perishableCalories>0&&preservedCalories<targetStoredCalories/2)
+                yield return new("food.preserved","сохранить скоропортящуюся пищу",.28f+
+                    Math.Min(.3f,perishableCalories/2400f*.3f),preservedCalories+1);
         }
 
         if(c.Knowledge.Facts.Contains("farming"))
