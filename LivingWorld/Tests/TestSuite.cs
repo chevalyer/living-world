@@ -413,6 +413,17 @@ public static class TestSuite
                 "move", "harvest", "pickup", "eat"
             }), "incorrect chain");
         });
+        Test("harvest pickup collects the full produced batch", ()=>
+        {
+            var(s,id)=Fixture();
+            var bush=Plant(s,new(6,5),"raspberry_bush",3);
+            var harvest=new HarvestAction();
+            Assert(harvest.Execute(s,id,new(){Target=bush,Position=new(6,5)}),"harvest failed");
+            var pickup=new PickUpAction();
+            Assert(pickup.Execute(s,id,new(){Target=bush,Position=new(6,5),Argument="raspberry"}),"pickup failed");
+            Equal(3,s.Inventory.Count(id,"raspberry"));
+            Equal(0,s.State.Entities.Store<ItemComponent>().All.Count(x=>x.Value.Definition=="raspberry"&&x.Value.Holder==0));
+        });
         Test("perception does not see through walls", ()=>
         {
             var(s, id)=Fixture(); s.State.Map[new(6, 5)].Wall=99; Plant(s, new(7, 5), "raspberry_bush", 3); PerceptionSystem.Observe(s, id, s.State.Entities.Get<MemoryComponent>(id)); Assert(!s.State.Entities.Get<MemoryComponent>(id).Observations.Any(o=>o.Position==new GridPoint(7, 5)), "wall ignored");
