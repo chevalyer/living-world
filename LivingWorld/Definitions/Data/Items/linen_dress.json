@@ -1,0 +1,27 @@
+{
+  "id": "linen_dress",
+  "name": "льняное платье",
+  "material": "flax",
+  "mass": 0.75,
+  "volume": 1.05,
+  "slots": [
+    "torso",
+    "legs"
+  ],
+  "coverage": 0.62,
+  "thickness": 0.75,
+  "comfort": 0.95,
+  "recipes": [
+    {
+      "id": "linen_dress",
+      "name": "сшить льняное платье",
+      "inputs": {
+        "cloth": 3
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 70
+    }
+  ]
+}

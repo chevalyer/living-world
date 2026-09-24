@@ -16,7 +16,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: LivingWorld
@@ -47,6 +47,66 @@ jobs:
 
       - name: seven day stability run
         run: dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- --seed 1847 --size 128 --npcs 14 --ticks 10080 --json artifacts/week.json
+
+      - name: inspect seven day content
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("artifacts/week.json").read_text())
+          assert data["simulation_tick"]==10080, "week simulation incomplete"
+          assert data["population"]==14, f"unexpected week population: {data['population']}"
+          assert not data["deaths"], f"unexpected week deaths: {data['deaths']}"
+          assert data["facilities"]>0, "NPCs produced no facilities in the integration world"
+          assert data["action_failures"]<100, f"excessive week failures: {data['action_failures']}"
+          print("week facilities", data["facility_counts"], "failures", data["action_failures"])
+          PY
+
+      - name: thirty day multi-seed behavior soak
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]') || contains(github.event.head_commit.message, '[soak30]')
+        run: |
+          for seed in 7 1847 9001; do
+            dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
+              --seed "$seed" --size 96 --npcs 14 --ticks 43200 --json "artifacts/behavior-$seed.json"
+          done
+
+      - name: inspect behavior soak
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]') || contains(github.event.head_commit.message, '[soak30]')
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          files=sorted(Path("artifacts").glob("behavior-*.json"))
+          assert len(files)==3, "missing behavior soak output"
+          for path in files:
+              data=json.loads(path.read_text())
+              assert data["simulation_tick"]==43200, f"{path}: incomplete simulation"
+              assert data["population"]>0, f"{path}: population collapsed"
+              print(path.name, "population", data["population"], "failures", data["action_failures"], "deaths", data["deaths"])
+          PY
+
+      - name: 320 day lifecycle soak
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]') || contains(github.event.head_commit.message, '[soak320]')
+        run: |
+          dotnet run --project Headless/LivingWorld.Headless.csproj -c Release --no-build -- \
+            --seed 1847 --size 64 --npcs 14 --ticks 460800 --json artifacts/lifecycle.json
+
+      - name: inspect lifecycle
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[soak]') || contains(github.event.head_commit.message, '[soak320]')
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("artifacts/lifecycle.json").read_text())
+          assert data["simulation_tick"]==460800, "lifecycle simulation incomplete"
+          assert data["population"]>0, "lifecycle population collapsed"
+          assert data["food_seed_items"]+data["food_crop_plants"]>0, "renewable food agriculture disappeared"
+          print("lifecycle population", data["population"])
+          print("lifecycle food seeds", data["food_seed_items"], "live food crops", data["food_crop_plants"])
+          print("lifecycle deaths", data["deaths"])
+          print("lifecycle failures", data["action_failures"])
+          print("lifecycle failure reasons", data["failure_reasons"])
+          PY
 
       - name: install godot 4.7.1 .net
         run: |

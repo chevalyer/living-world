@@ -7,24 +7,37 @@ public sealed class EatAction : SimAction
     {
         foreach (var d in c.Definitions.Items.Values.Where(d=>d.Calories>0&&d.Toxicity<.1f))
         {
-            var op=Option(c.Position, argument:d.Id, duration:3, local:true);
-            op.Requires=[new(Item(d.Id), 1)];
-            op.Effects=[new(Item(d.Id), -1), new("fed", 1, true)];
-            if (d.Water>.2f)op.Effects.Add(new("hydrated", 1, true));
+            var op=Option(c.Position,argument:d.Id,duration:3,local:true);
+            op.Requires=[new(Item(d.Id),1)];
+            op.Effects=[new(Item(d.Id),-1),new("fed",(int)MathF.Max(1,d.Calories))];
+            if(d.Water>.2f)op.Effects.Add(new("hydrated",1,true));
             yield return op;
         }
     }
-    public override bool Execute(SimulationSession s, int actor, ActionStep step)
+    public override bool CanExecute(SimulationSession s,int actor,ActionStep step,out string reason)
     {
-        var id=s.Inventory.Items(actor).Where(i=>s.State.Entities.Get<ItemComponent>(i).Definition==step.Argument&&s.State.Entities.Get<ItemComponent>(i).Freshness>=.1f).OrderByDescending(i=>s.State.Entities.Get<ItemComponent>(i).Freshness).FirstOrDefault();
-        if (id==0)return false;
+        if(!base.CanExecute(s,actor,step,out reason))return false;
+        if(s.Definitions.Items.TryGetValue(step.Argument,out var definition)&&definition.Calories>0&&
+            s.Inventory.Items(actor).Any(id=>s.State.Entities.Get<ItemComponent>(id) is { } item&&
+                item.Definition==step.Argument&&item.Freshness>=.1f))return true;
+        reason="еда больше недоступна";
+        return false;
+    }
+    public override bool Execute(SimulationSession s,int actor,ActionStep step)
+    {
+        var id=s.Inventory.Items(actor)
+            .Where(i=>s.State.Entities.Get<ItemComponent>(i).Definition==step.Argument&&s.State.Entities.Get<ItemComponent>(i).Freshness>=.1f)
+            .OrderByDescending(i=>s.State.Entities.Get<ItemComponent>(i).Freshness)
+            .FirstOrDefault();
+        if(id==0)return false;
         var item=s.State.Entities.Get<ItemComponent>(id);
         var d=s.Definitions.Items[item.Definition];
-        if (d.Calories<=0)return false;
+        if(d.Calories<=0)return false;
         var needs=s.State.Entities.Get<NeedsComponent>(actor);
-        needs.Hunger=Math.Max(0, needs.Hunger-d.Calories*item.Freshness/2400);
-        needs.Thirst=Math.Max(0, needs.Thirst-d.Water/2);
-        s.State.Entities.Get<HealthComponent>(actor).Value-=d.Toxicity*20+(item.Freshness<.1f?2:0);
+        needs.Hunger=Math.Max(0,needs.Hunger-d.Calories*item.Freshness/2400);
+        needs.Thirst=Math.Max(0,needs.Thirst-d.Water/2);
+        var damage=d.Toxicity*20+(item.Freshness<.1f?2:0);
+        if(damage>0)s.State.Entities.Get<HealthComponent>(actor).Damage(damage,"отравление",s.State.Clock.Tick);
         s.Inventory.Destroy(id);
         return true;
     }

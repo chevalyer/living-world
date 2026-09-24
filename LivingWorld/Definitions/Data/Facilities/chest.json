@@ -1,0 +1,19 @@
+{
+  "id": "chest",
+  "name": "сундук",
+  "placement": "indoor",
+  "inputs": {
+    "plank": 4
+  },
+  "capabilities": [
+    "storage"
+  ],
+  "knowledge": "crafting",
+  "skill": "crafting",
+  "workMinutes": 35,
+  "storageMass": 180,
+  "storageVolume": 260,
+  "shape": "chest",
+  "color": "#735638",
+  "accent": "#c49a5c"
+}

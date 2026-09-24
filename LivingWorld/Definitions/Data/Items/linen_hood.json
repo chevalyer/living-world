@@ -1,0 +1,26 @@
+{
+  "id": "linen_hood",
+  "name": "льняной капюшон",
+  "material": "flax",
+  "mass": 0.18,
+  "volume": 0.24,
+  "slots": [
+    "head"
+  ],
+  "coverage": 0.1,
+  "thickness": 0.6,
+  "comfort": 1,
+  "recipes": [
+    {
+      "id": "linen_hood",
+      "name": "сшить льняной капюшон",
+      "inputs": {
+        "cloth": 1
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 25
+    }
+  ]
+}

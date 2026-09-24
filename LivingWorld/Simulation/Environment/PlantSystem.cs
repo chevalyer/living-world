@@ -34,6 +34,7 @@ public sealed class PlantSystem : ISimulationSystem
                 session.Spatial.Remove(id);
                 continue;
             }
+            if (d.Kind=="crop")continue;
             plant.ReproductionProgress+=rate/24f;
             if (plant.ReproductionProgress<20||ids.Length>s.Map.Tiles.Length/3)continue;
             plant.ReproductionProgress=0;

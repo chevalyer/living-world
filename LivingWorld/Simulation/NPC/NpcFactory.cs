@@ -16,13 +16,29 @@ public sealed class NpcFactory(DefinitionCatalog definitions)
             inventory.Items.Add(item);
             if (wear)equipment.Items.Add(item);
         }
-        Give("linen_shirt", true);
-        Give("linen_trousers", true);
-        Give("boots", true);
-        Give(random.Chance(.5)?"leather_jacket":"wool_coat");
+        // Founders keep only primitive bootstrap tools. Clothing is produced by the simulation.
         Give("stone_axe");
         Give("stone_pick");
-        for (var i=0; i<4; i++)Give("grain");
+        for(var i=0;i<5;i++)Give("grain");
+        var crops=definitions.Plants.Values
+            .Where(x=>x.Kind=="crop"&&x.Seed.Length>0&&definitions.Items.ContainsKey(x.Seed))
+            .OrderBy(x=>x.Id,StringComparer.Ordinal).ToArray();
+        var foodSeeds=crops
+            .Where(x=>definitions.Items[x.Product].Calories>0)
+            .OrderByDescending(x=>definitions.Items[x.Product].Calories*x.Yield/Math.Max(1,x.GrowthDays))
+            .ThenBy(x=>x.Id,StringComparer.Ordinal)
+            .Take(4).Select(x=>x.Seed).Distinct(StringComparer.Ordinal).ToArray();
+        if(foodSeeds.Length>0)
+        {
+            var staple=foodSeeds[random.Range(0,foodSeeds.Length)];
+            for(var i=0;i<3;i++)Give(staple);
+        }
+        var allSeeds=crops.Select(x=>x.Seed).Distinct(StringComparer.Ordinal).ToArray();
+        if(allSeeds.Length>0)
+        {
+            var secondary=allSeeds[random.Range(0,allSeeds.Length)];
+            for(var i=0;i<2;i++)Give(secondary);
+        }
         state.Entities.Get<SkillsComponent>(id).Experience["building"]=random.Range(20f, 90f);
         return id;
     }

@@ -9,7 +9,8 @@ public sealed class NeedsSystem : ISimulationSystem
         var count=0;
         foreach (var (id, n) in s.Entities.Store<NeedsComponent>().All)
         {
-            if (!s.Entities.Get<HealthComponent>(id).Alive)continue;
+            var health=s.Entities.Get<HealthComponent>(id);
+            if (!health.Alive)continue;
             count++;
             var active=s.Entities.Get<MovementComponent>(id).Path.Count>0;
             var pregnant=s.Entities.Get<FamilyComponent>(id).PregnancyDueTick.HasValue;
@@ -17,10 +18,9 @@ public sealed class NeedsSystem : ISimulationSystem
             n.Thirst=Math.Min(1, n.Thirst+1/2100f);
             n.Fatigue=Math.Min(1, n.Fatigue+1/1600f);
             n.Loneliness=Math.Min(1, n.Loneliness+1/4000f);
-            var health=s.Entities.Get<HealthComponent>(id);
-            if (n.Hunger>.995f)health.Value-=.025f;
-            if (n.Thirst>.995f)health.Value-=.08f;
-            if (n.Fatigue<.5f && n.Hunger<.6f && n.Thirst<.6f)health.Value=Math.Min(100, health.Value+.008f);
+            if (n.Hunger>.995f)health.Damage(.025f,"голод",s.Clock.Tick);
+            if (n.Thirst>.995f)health.Damage(.08f,"обезвоживание",s.Clock.Tick);
+            if (health.Value>0&&n.Fatigue<.5f&&n.Hunger<.6f&&n.Thirst<.6f)health.Value=Math.Min(100, health.Value+.008f);
         }
         return count;
     }

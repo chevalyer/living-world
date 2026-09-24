@@ -17,7 +17,9 @@
       },
       "skill": "tailoring",
       "knowledge": "tailoring",
-      "minutes": 25
+      "minutes": 25,
+      "capability": "textile",
+      "tool": "cut"
     }
   ]
 }

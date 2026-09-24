@@ -8,7 +8,8 @@ public enum MapOverlay
     Settlements,
     Traffic,
     Fertility,
-    Rooms
+    Rooms,
+    Facilities
 }
 
 public partial class WorldView : Node2D
@@ -101,7 +102,7 @@ public partial class WorldView : Node2D
             else DrawRect(area, TerrainTexture.ColorFor(chunk.Tiles[136]));
         }
         VisibleChunks = _visible.Count;
-        DrawMapOverlay(world, margin);
+        if(Game.Hud.InterfaceVisible)DrawMapOverlay(world,margin);
         VisibleObjects = 0;
         if (CurrentLod == 0)
         {
@@ -118,8 +119,8 @@ public partial class WorldView : Node2D
         var alpha = world.Paused ? 1 : (float)Math.Clamp(Stopwatch.GetElapsedTime(_publicationTime).TotalSeconds * SimulationRunner.PublicationsPerSecond, 0, 1);
         foreach (var person in _people) DrawPerson(person, world.Tick, alpha);
         VisibleObjects += _people.Count;
-        if (Game.Overlay == MapOverlay.Settlements || Game.SelectedSettlement != 0) DrawSettlements(world, margin);
-        if (Game.DebugView) DrawDebug(world, margin);
+        if(Game.Hud.InterfaceVisible&&(Game.Overlay==MapOverlay.Settlements||Game.SelectedSettlement!=0))DrawSettlements(world,margin);
+        if(Game.Hud.InterfaceVisible&&Game.DebugView)DrawDebug(world,margin);
         var night = Math.Clamp((.25f - world.Sunlight) * .65f, 0, .16f);
         if (night > 0) DrawRect(rect, new Color(.04f, .07f, .18f, night));
         // Unseen textures may be freed without touching simulation entities or their updates.
@@ -137,6 +138,20 @@ public partial class WorldView : Node2D
     private void DrawMapOverlay(RenderSnapshot world, Rect2 visible)
     {
         if (Game.Overlay is MapOverlay.None or MapOverlay.Settlements) return;
+        if(Game.Overlay==MapOverlay.Facilities)
+        {
+            foreach(var chunk in _visible)
+            foreach(var entity in chunk.Entities.Where(e=>e.Kind=="facility"))
+            {
+                var center=ToVector(entity.Tile);
+                if(!visible.HasPoint(center))continue;
+                var color=new Color(entity.Accent);
+                DrawRect(new Rect2(center-new Vector2(7,7),new Vector2(14,14)),
+                    new Color(color.R,color.G,color.B,.16f));
+                DrawRect(new Rect2(center-new Vector2(7,7),new Vector2(14,14)),color,false,1.5f);
+            }
+            return;
+        }
         if (Game.Overlay == MapOverlay.Rooms)
         {
             foreach (var room in world.RoomAreas)
@@ -184,17 +199,27 @@ public partial class WorldView : Node2D
     {
         foreach (var settlement in world.Settlements)
         {
-            var rect=new Rect2(
-                new Vector2(settlement.MinX*TileSize,settlement.MinY*TileSize),
-                new Vector2((settlement.MaxX-settlement.MinX+1)*TileSize,(settlement.MaxY-settlement.MinY+1)*TileSize));
-            if (!rect.Intersects(visible))continue;
+            if (settlement.Areas.Count==0)continue;
             var selected=settlement.Anchor==Game.SelectedSettlement;
             var fill=selected?new Color(.92f,.71f,.36f,.15f):new Color(.53f,.72f,.56f,.09f);
             var border=selected?new Color(.98f,.79f,.43f,.95f):new Color(.62f,.79f,.63f,.72f);
-            DrawRect(rect,fill);
-            DrawRect(rect,border,false,selected?2f:1f);
+            var anyVisible=false;
+            foreach (var area in settlement.Areas)
+            {
+                var rect=new Rect2(
+                    new Vector2(area.X*TileSize,area.Y*TileSize),
+                    new Vector2(SettlementAnalyzer.SettlementCellSize*TileSize,SettlementAnalyzer.SettlementCellSize*TileSize));
+                if (!rect.Intersects(visible))continue;
+                anyVisible=true;
+                DrawRect(rect,fill);
+                DrawRect(rect,border,false,selected?2f:1f);
+            }
+            if (!anyVisible)continue;
+            var labelArea=settlement.Areas.OrderBy(x=>x.Y).ThenBy(x=>x.X).First();
             var fontSize=(int)Math.Clamp(14f/Game.Camera.Zoom.X,10,36);
-            var labelPosition=new Vector2(rect.Position.X+4/Game.Camera.Zoom.X,rect.Position.Y-6/Game.Camera.Zoom.X);
+            var labelPosition=new Vector2(
+                labelArea.X*TileSize+4/Game.Camera.Zoom.X,
+                labelArea.Y*TileSize-6/Game.Camera.Zoom.X);
             DrawString(ThemeDB.FallbackFont,labelPosition,settlement.Name,HorizontalAlignment.Left,-1,fontSize,border);
         }
     }
@@ -244,6 +269,35 @@ public partial class WorldView : Node2D
             case "roof": if (Game.DebugView) DrawRect(new Rect2(p - new Vector2(8, 8), new Vector2(16, 16)), new Color(1, 1, 1, .06f)); break;
             case "blueprint": DrawRect(new Rect2(p - new Vector2(7, 7), new Vector2(14, 14)), new Color(1, 1, 1, .18f), false, 1); break;
             case "storage": Pixel(p, -5, -4, 11, 9, entity.Color); Pixel(p, -5, -4, 11, 2, entity.Accent); Pixel(p, -1, -3, 2, 8, "#b09468"); break;
+            case "facility":
+                switch(entity.Shape)
+                {
+                    case "bed":
+                        Pixel(p,-7,-3,14,8,entity.Color); Pixel(p,-6,-2,5,4,entity.Accent); Pixel(p,-7,4,2,3,"#5d4936"); Pixel(p,5,4,2,3,"#5d4936");
+                        break;
+                    case "chest":
+                        Pixel(p,-5,-4,11,9,entity.Color); Pixel(p,-5,-4,11,2,entity.Accent); Pixel(p,-1,-3,2,8,"#c5a66b");
+                        break;
+                    case "forge":
+                        Pixel(p,-6,-3,12,8,entity.Color); Pixel(p,-3,-6,6,5,entity.Accent); Pixel(p,-1,-5,2,4,"#f2c56c");
+                        break;
+                    case "oven":
+                        Pixel(p,-6,-7,12,13,entity.Color); Pixel(p,-3,-3,6,6,"#4b4037"); Pixel(p,-2,-2,4,3,entity.Accent);
+                        break;
+                    case "well":
+                        DrawCircle(p,6,new Color(entity.Color)); DrawCircle(p,3,new Color("#253338")); Pixel(p,-6,-7,2,7,entity.Accent); Pixel(p,5,-7,2,7,entity.Accent);
+                        break;
+                    case "loom":
+                        Pixel(p,-6,-7,2,14,entity.Color); Pixel(p,5,-7,2,14,entity.Color); Pixel(p,-4,-5,9,2,entity.Accent); Pixel(p,-4,0,9,1,entity.Accent);
+                        break;
+                    case "mill":
+                        DrawCircle(p,6,new Color(entity.Color)); DrawCircle(p,3,new Color(entity.Accent)); Pixel(p,-1,-1,2,2,"#4f4d48");
+                        break;
+                    default:
+                        Pixel(p,-7,1,14,3,entity.Color); Pixel(p,-5,-4,10,5,entity.Accent); Pixel(p,-6,4,2,4,entity.Color); Pixel(p,4,4,2,4,entity.Color);
+                        break;
+                }
+                break;
             case "fire": Pixel(p, -4, 2, 9, 3, "#6a5745"); if (entity.Yield > 0) { Pixel(p, -2, -4, 5, 7, entity.Color); Pixel(p, 0, -7, 2, 8, entity.Accent); } break;
         }
     }
@@ -252,7 +306,7 @@ public partial class WorldView : Node2D
     {
         var target = ToVector(person.Tile);
         var p = _previousPeople.TryGetValue(person.Id, out var previous) ? previous.Lerp(target, alpha) : target;
-        var selected = Game.Selected == person.Id;
+        var selected=Game.Hud.InterfaceVisible&&Game.Selected==person.Id;
         if (CurrentLod > 0)
         {
             var size = CurrentLod == 2 ? 2 / Game.Camera.Zoom.X : 5;
@@ -270,6 +324,7 @@ public partial class WorldView : Node2D
         var step = person.Moving ? (int)(tick % 2) : 0;
         DrawRect(new Rect2(p + new Vector2(-3, 2 + step) * scale, new Vector2(2, 4) * scale), new Color("#4c5048"));
         DrawRect(new Rect2(p + new Vector2(1, 3 - step) * scale, new Vector2(2, 3) * scale), new Color("#4c5048"));
+        if(person.HeldShape.Length>0)DrawHeld(person,p,scale);
         if (person.Sleeping) Pixel(p, 5, -13, 2, 2, "#d9e4e8");
         if (person.Pregnant) Pixel(p, 6, -5, 2, 2, "#e8c9b7");
         if (Game.DebugView && selected)
@@ -278,6 +333,35 @@ public partial class WorldView : Node2D
             DrawString(ThemeDB.FallbackFont,p+new Vector2(8,-12),person.Action,HorizontalAlignment.Left,-1,fontSize,new Color(.94f,.91f,.82f,.9f));
         }
     }
+    private void DrawHeld(RenderPerson person,Vector2 p,float scale)
+    {
+        var hand=p+new Vector2(4,-3)*scale;
+        switch(person.HeldShape)
+        {
+            case "axe":
+                DrawLine(hand,hand+new Vector2(4,7)*scale,new Color("#806348"),1.5f);
+                DrawRect(new Rect2(hand+new Vector2(2,-1)*scale,new Vector2(5,3)*scale),new Color(person.HeldAccent));
+                break;
+            case "pick":
+                DrawLine(hand,hand+new Vector2(3,8)*scale,new Color("#806348"),1.5f);
+                DrawLine(hand+new Vector2(-2,0)*scale,hand+new Vector2(5,-1)*scale,new Color(person.HeldAccent),2);
+                break;
+            case "bulk":
+                DrawRect(new Rect2(hand+new Vector2(0,2)*scale,new Vector2(7,3)*scale),new Color(person.HeldColor));
+                DrawRect(new Rect2(hand+new Vector2(1,2)*scale,new Vector2(2,3)*scale),new Color(person.HeldAccent));
+                break;
+            case "food":
+                DrawCircle(hand+new Vector2(3,2)*scale,2.5f*scale,new Color(person.HeldColor));
+                break;
+            case "seed":
+                DrawRect(new Rect2(hand+new Vector2(2,1)*scale,new Vector2(3,3)*scale),new Color(person.HeldColor));
+                break;
+            default:
+                DrawRect(new Rect2(hand+new Vector2(1,1)*scale,new Vector2(4,4)*scale),new Color(person.HeldColor));
+                break;
+        }
+    }
+
     private void DrawDebug(RenderSnapshot snapshot, Rect2 visible)
     {
         var selected = snapshot.People.FirstOrDefault(p => p.Id == Game.Selected);

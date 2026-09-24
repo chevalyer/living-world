@@ -17,6 +17,9 @@ public sealed class HarvestAction : SimAction
             var op=Option(o.Position, o.Entity, plant.Product, 3);
             op.Requires=[new(Source(o.Entity), units)];
             op.Effects=[new(Source(o.Entity), -units), new("ground:"+o.Entity+":"+plant.Product, units)];
+            if (plant.Kind=="crop"&&plant.Seed.Length>0&&plant.SeedYield>0&&
+                (!plant.HarvestRemovesPlant||o.Quantity<=units))
+                op.Effects.Add(new("ground:"+o.Entity+":"+plant.Seed, plant.SeedYield));
             op.Skill="foraging";
             yield return op;
         }
@@ -32,8 +35,16 @@ public sealed class HarvestAction : SimAction
         if (d.Kind=="tree")return false;
         if (s.Definitions.Items[d.Product].Calories>0&&!s.State.Entities.Get<KnowledgeComponent>(actor).EdiblePlants.Contains(d.Id))return false;
         var units=Math.Min(3, (int)plant.Yield);
+        var depleted=plant.Yield-units<1;
         plant.Yield-=units;
-        for (var i=0; i<units; i++)s.Inventory.Spawn(d.Product, step.Position, actor);
+        for (var i=0; i<units; i++)s.Inventory.Spawn(d.Product, step.Position);
+        if (d.Kind=="crop"&&d.Seed.Length>0&&d.SeedYield>0&&(!d.HarvestRemovesPlant||depleted))
+            for (var i=0; i<d.SeedYield; i++)s.Inventory.Spawn(d.Seed, step.Position);
+        if (depleted&&d.HarvestRemovesPlant)
+        {
+            s.State.Entities.Remove(step.Target);
+            s.Spatial.Remove(step.Target);
+        }
         s.Events.Publish(new SkillUsedEvent(actor, "foraging", units));
         return true;
     }

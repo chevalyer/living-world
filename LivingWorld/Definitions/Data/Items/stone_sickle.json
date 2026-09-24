@@ -1,0 +1,27 @@
+{
+  "id": "stone_sickle",
+  "name": "каменный серп",
+  "material": "stone",
+  "mass": 0.9,
+  "volume": 1.4,
+  "tools": {
+    "harvest": 0.65
+  },
+  "durability": 65,
+  "tags": [
+    "tool"
+  ],
+  "recipes": [
+    {
+      "id": "stone_sickle",
+      "name": "собрать каменный серп",
+      "inputs": {
+        "log": 1,
+        "granite": 1
+      },
+      "skill": "crafting",
+      "knowledge": "crafting",
+      "minutes": 30
+    }
+  ]
+}

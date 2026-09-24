@@ -34,7 +34,25 @@ try
     }
     var summary=new
     {
-        seed=session.State.Seed, ticks, simulation_tick=session.State.Clock.Tick, date=session.State.Clock.Now, population=session.State.Population, entities=session.State.Entities.Count, rooms=session.State.Rooms.Count, settlement=SettlementAnalyzer.Describe(session), generation_ms=generated, simulation_ms=timer.Elapsed.TotalMilliseconds, hash=saves.Hash(session), action_failures=session.State.Entities.Store<DecisionComponent>().All.Sum(x=>x.Value.Failures), profiles=session.Profiles.Values.Select(p=>new
+        seed=session.State.Seed, ticks, simulation_tick=session.State.Clock.Tick, date=session.State.Clock.Now, population=session.State.Population, entities=session.State.Entities.Count, rooms=session.State.Rooms.Count, settlement=SettlementAnalyzer.Describe(session), generation_ms=generated, simulation_ms=timer.Elapsed.TotalMilliseconds, hash=saves.Hash(session),
+        facilities=session.State.Entities.Store<FacilityComponent>().Count,
+        facility_counts=session.State.Entities.Store<FacilityComponent>().All
+            .GroupBy(x=>x.Value.Definition).OrderBy(x=>x.Key,StringComparer.Ordinal)
+            .ToDictionary(g=>g.Key,g=>g.Count()),
+        item_counts=session.State.Entities.Store<ItemComponent>().All
+            .GroupBy(x=>x.Value.Definition).OrderBy(x=>x.Key,StringComparer.Ordinal)
+            .ToDictionary(g=>g.Key,g=>g.Count()),
+        food_seed_items=session.State.Entities.Store<ItemComponent>().All.Count(x=>
+            definitions.Plants.Values.Any(plant=>plant.Kind=="crop"&&plant.Seed==x.Value.Definition&&
+                definitions.Items.TryGetValue(plant.Product,out var product)&&product.Calories>0)),
+        food_crop_plants=session.State.Entities.Store<PlantComponent>().All.Count(x=>
+            definitions.Plants.TryGetValue(x.Value.Definition,out var plant)&&plant.Kind=="crop"&&
+            definitions.Items.TryGetValue(plant.Product,out var product)&&product.Calories>0),
+        action_failures=session.State.Entities.Store<DecisionComponent>().All.Sum(x=>x.Value.Failures),
+        failure_reasons=session.FailureReasons.OrderByDescending(x=>x.Value).ToDictionary(x=>x.Key,x=>x.Value),
+        failure_actions=session.FailureActions.OrderByDescending(x=>x.Value).ToDictionary(x=>x.Key,x=>x.Value),
+        deaths=session.State.Entities.Store<HealthComponent>().All.Where(x=>!x.Value.Alive).GroupBy(x=>x.Value.DeathReason).ToDictionary(g=>g.Key,g=>g.Count()),
+        profiles=session.Profiles.Values.Select(p=>new
         {
             p.Name, p.AverageMilliseconds, p.MaxMilliseconds, p.Calls, p.Entities
         }), journal=session.State.Journal.TakeLast(10)

@@ -154,7 +154,15 @@ public partial class GameRoot : Node2D
         SelectedSettlement=anchor;
         Hud.SelectedTile=settlement.Center;
         SetOverlay(MapOverlay.Settlements);
-        Camera.FocusArea(settlement.MinX,settlement.MinY,settlement.MaxX,settlement.MaxY);
+        if (settlement.Areas.Count>0)
+        {
+            var minX=settlement.Areas.Min(x=>x.X);
+            var minY=settlement.Areas.Min(x=>x.Y);
+            var maxX=settlement.Areas.Max(x=>x.X+SettlementAnalyzer.SettlementCellSize-1);
+            var maxY=settlement.Areas.Max(x=>x.Y+SettlementAnalyzer.SettlementCellSize-1);
+            Camera.FocusArea(minX,minY,maxX,maxY);
+        }
+        else Camera.FocusArea(settlement.Center.X,settlement.Center.Y,settlement.Center.X,settlement.Center.Y);
         Hud.ShowSettlement(anchor);
         _runner?.SetView(new(0,Hud.SelectedTile,DebugView));
         Hud.Refresh();
@@ -212,6 +220,7 @@ public partial class GameRoot : Node2D
                 case Key.Key4: Speed = 32; break;
                 case Key.F2: DebugView = !DebugView; break;
                 case Key.F3: CycleOverlay(); break;
+                case Key.H: Hud.ToggleInterface(); break;
                 case Key.F5: Save(); break;
                 case Key.F9: Load(); break;
                 case Key.F when key.CtrlPressed: Hud.FocusSearch(); break;

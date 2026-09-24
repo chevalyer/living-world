@@ -1,25 +1,41 @@
 namespace LivingWorld.Simulation;
 
+public readonly record struct SettlementArea(int X,int Y)
+{
+    public int MinX=>X;
+    public int MinY=>Y;
+    public int MaxX=>X+SettlementAnalyzer.SettlementCellSize-1;
+    public int MaxY=>Y+SettlementAnalyzer.SettlementCellSize-1;
+    public bool Contains(GridPoint point)=>point.X>=MinX&&point.X<=MaxX&&point.Y>=MinY&&point.Y<=MaxY;
+}
+
 public sealed record SettlementSummary(
     int Anchor,
     string Name,
     GridPoint Center,
-    int MinX,
-    int MinY,
-    int MaxX,
-    int MaxY,
+    SettlementArea[] Areas,
     int Homes,
     int Members,
     int Families,
     float FoodCalories,
     int Projects,
-    string[] Specializations);
+    int Facilities,
+    string[] Capabilities,
+    string[] Specializations)
+{
+    public int MinX=>Areas.Length==0?Center.X:Areas.Min(x=>x.MinX);
+    public int MinY=>Areas.Length==0?Center.Y:Areas.Min(x=>x.MinY);
+    public int MaxX=>Areas.Length==0?Center.X:Areas.Max(x=>x.MaxX);
+    public int MaxY=>Areas.Length==0?Center.Y:Areas.Max(x=>x.MaxY);
+    public bool Contains(GridPoint point)=>Areas.Any(area=>area.Contains(point));
+}
 
 public static class SettlementAnalyzer
 {
     public const int HomeLinkDistance = 18;
     public const int ResidentReach = 28;
-    private const int BorderPadding = 4;
+    public const int SettlementCellSize = 7;
+    private const int HomePadding = 1;
 
     public static IReadOnlyList<SettlementSummary> DescribeAll(SimulationSession session)
     {
@@ -27,7 +43,7 @@ public static class SettlementAnalyzer
         var e=s.Entities;
         var homes=e.Store<ConstructionComponent>().All
             .Where(x=>x.Value.Finished&&e.Has<PositionComponent>(x.Key))
-            .Select(x=>new Home(x.Key,e.Get<PositionComponent>(x.Key).Tile,x.Value.Definition))
+            .Select(x=>new Home(x.Key,e.Get<PositionComponent>(x.Key).Tile,x.Value.Definition,x.Value))
             .OrderBy(x=>x.Id)
             .ToArray();
         if (homes.Length==0)return Array.Empty<SettlementSummary>();
@@ -63,6 +79,7 @@ public static class SettlementAnalyzer
         }
 
         var result=new List<SettlementSummary>(clusters.Count);
+        var usedNames=new HashSet<string>(StringComparer.Ordinal);
         for (var clusterIndex=0;clusterIndex<clusters.Count;clusterIndex++)
         {
             var cluster=clusters[clusterIndex];
@@ -71,14 +88,7 @@ public static class SettlementAnalyzer
                 (int)Math.Round(cluster.Average(x=>x.Position.X)),
                 (int)Math.Round(cluster.Average(x=>x.Position.Y)));
 
-            var minX=cluster.Min(x=>x.Position.X-session.Definitions.Buildings[x.Definition].Size/2)-BorderPadding;
-            var minY=cluster.Min(x=>x.Position.Y-session.Definitions.Buildings[x.Definition].Size/2)-BorderPadding;
-            var maxX=cluster.Max(x=>x.Position.X+session.Definitions.Buildings[x.Definition].Size/2)+BorderPadding;
-            var maxY=cluster.Max(x=>x.Position.Y+session.Definitions.Buildings[x.Definition].Size/2)+BorderPadding;
-            minX=Math.Clamp(minX,0,s.Map.Width-1);
-            minY=Math.Clamp(minY,0,s.Map.Height-1);
-            maxX=Math.Clamp(maxX,0,s.Map.Width-1);
-            maxY=Math.Clamp(maxY,0,s.Map.Height-1);
+            var areas=AreasFor(cluster,session.Definitions,s.Map);
 
             var members=membersByCluster[clusterIndex].Distinct().OrderBy(id=>id).ToArray();
             var memberSet=members.ToHashSet();
@@ -93,7 +103,7 @@ public static class SettlementAnalyzer
                     families.Add(id);
             }
 
-            bool Inside(GridPoint p)=>p.X>=minX&&p.X<=maxX&&p.Y>=minY&&p.Y<=maxY;
+            bool Inside(GridPoint p)=>areas.Any(area=>area.Contains(p));
             var food=0f;
             foreach (var (itemId,item) in e.Store<ItemComponent>().All)
             {
@@ -108,8 +118,20 @@ public static class SettlementAnalyzer
             }
 
             var projects=e.Store<ConstructionComponent>().All.Count(x=>
-                !x.Value.Finished&&e.Try<PositionComponent>(x.Key) is { } position&&
-                (Inside(position.Tile)||position.Tile.Distance(center)<=ResidentReach));
+            {
+                if (x.Value.Finished)return false;
+                if (x.Value.Footprint.Count>0)return x.Value.Footprint.Any(Inside);
+                return e.Try<PositionComponent>(x.Key) is { } position&&Inside(position.Tile);
+            });
+
+            var localFacilities=e.Store<FacilityComponent>().All
+                .Where(x=>e.Try<PositionComponent>(x.Key) is { } position&&Inside(position.Tile))
+                .ToArray();
+            var capabilities=localFacilities
+                .SelectMany(x=>session.Definitions.Facilities[x.Value.Definition].Capabilities)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(x=>x,StringComparer.Ordinal)
+                .ToArray();
 
             var specializations=members
                 .Select(id=>e.Get<SkillsComponent>(id).Experience
@@ -125,14 +147,16 @@ public static class SettlementAnalyzer
 
             result.Add(new(
                 anchor,
-                NameFor(s.Seed,anchor),
+                NameFor(session,anchor,usedNames),
                 center,
-                minX,minY,maxX,maxY,
+                areas,
                 cluster.Count,
                 members.Length,
                 families.Count,
                 food,
                 projects,
+                localFacilities.Length,
+                capabilities,
                 specializations));
         }
         return result.OrderBy(x=>x.Anchor).ToArray();
@@ -144,7 +168,7 @@ public static class SettlementAnalyzer
             .OrderByDescending(x=>x.Members)
             .ThenBy(x=>x.Anchor)
             .FirstOrDefault()
-            ??new(0,"нет поселений",session.State.Start,0,0,0,0,0,0,0,0,0,[]);
+            ??new(0,"нет поселений",session.State.Start,[],0,0,0,0,0,0,[],[]);
     }
 
     private static int[] LivingPeople(SimulationSession session)
@@ -183,22 +207,43 @@ public static class SettlementAnalyzer
         return result;
     }
 
-    private static string NameFor(int seed,int anchor)
+    private static SettlementArea[] AreasFor(List<Home> homes,DefinitionCatalog definitions,WorldMap map)
     {
-        string[] roots=["берез","соснов","реч","озер","камен","лугов","дубров","ясн","верх","тих","зареч","серебр","мелов","ветров","светл","родник"];
-        string[] endings=["овка","ино","ское","ье","ица","ово","бор","доль","поле","град","ное","ск"];
-        unchecked
+        var areas=new HashSet<SettlementArea>();
+        foreach (var home in homes)
         {
-            uint hash=2166136261;
-            hash=(hash^(uint)seed)*16777619;
-            hash=(hash^(uint)anchor)*16777619;
-            var root=roots[(int)(hash%(uint)roots.Length)];
-            hash=(hash>>1)^(hash*2246822519u);
-            var ending=endings[(int)(hash%(uint)endings.Length)];
-            var value=root+ending;
-            return char.ToUpperInvariant(value[0])+value[1..];
+            IEnumerable<GridPoint> occupied;
+            if (home.Project.Footprint.Count>0)occupied=home.Project.Footprint;
+            else
+            {
+                var radius=definitions.Buildings[home.Definition].Size/2;
+                occupied=
+                    from y in Enumerable.Range(home.Position.Y-radius,radius*2+1)
+                    from x in Enumerable.Range(home.Position.X-radius,radius*2+1)
+                    select new GridPoint(x,y);
+            }
+            foreach (var cell in occupied)
+                for (var dy=-HomePadding;dy<=HomePadding;dy++)
+                    for (var dx=-HomePadding;dx<=HomePadding;dx++)
+                    {
+                        var p=cell+new GridPoint(dx,dy);
+                        if (!map.Contains(p))continue;
+                        areas.Add(new(p.X/SettlementCellSize*SettlementCellSize,p.Y/SettlementCellSize*SettlementCellSize));
+                    }
+        }
+        return areas.OrderBy(x=>x.Y).ThenBy(x=>x.X).ToArray();
+    }
+
+    private static string NameFor(SimulationSession session,int anchor,HashSet<string> used)
+    {
+        var generator=new NameGenerator(session.Definitions.Names);
+        for(var attempt=0;;attempt++)
+        {
+            var random=new DeterministicRandom(RandomService.Hash(session.State.Seed,$"settlement:{anchor}:{attempt}"));
+            var value=generator.GenerateWord(random,2,4);
+            if(used.Add(value))return value;
         }
     }
 
-    private sealed record Home(int Id,GridPoint Position,string Definition);
+    private sealed record Home(int Id,GridPoint Position,string Definition,ConstructionComponent Project);
 }

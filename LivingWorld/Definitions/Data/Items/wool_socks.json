@@ -1,0 +1,26 @@
+{
+  "id": "wool_socks",
+  "name": "шерстяные носки",
+  "material": "wool",
+  "mass": 0.18,
+  "volume": 0.22,
+  "slots": [
+    "feet_inner"
+  ],
+  "coverage": 0.07,
+  "thickness": 1.35,
+  "comfort": 1,
+  "recipes": [
+    {
+      "id": "wool_socks",
+      "name": "связать шерстяные носки",
+      "inputs": {
+        "wool_yarn": 2
+      },
+      "operation": "sew",
+      "skill": "tailoring",
+      "knowledge": "tailoring",
+      "minutes": 30
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "cabbage",
+  "name": "капуста",
+  "kind": "crop",
+  "product": "cabbage",
+  "seed": "cabbage_seed",
+  "seedYield": 2,
+  "minTemperature": 4,
+  "maxTemperature": 27,
+  "frostTolerance": -5,
+  "minMoisture": 0.4,
+  "growthDays": 65,
+  "yield": 6,
+  "regrowthDays": 25,
+  "lifespanDays": 200,
+  "color": "#688b5c",
+  "fruitColor": "#8fb879",
+  "spawnWeight": 0.04,
+  "optimalTemperature": 14,
+  "shape": "round",
+  "harvestRemovesPlant": true
+}

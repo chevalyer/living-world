@@ -17,21 +17,40 @@ public sealed class DecisionSystem : ISimulationSystem
             if (processed>=session.MaxDecisionsPerTick)break;
             processed++;
             s.DecisionCursor=actor;
-            var context=ContextBuilder.Create(session, actor, findBuildSite:false);
+            var context=ContextBuilder.Create(session,actor,findBuildSite:false,findFarmSite:false);
             var desires=session.Evaluators.SelectMany(x=>x.Evaluate(context)).Where(x=>x.Urgency>.025f).OrderByDescending(x=>x.Urgency).Take(6).ToArray();
             var urgent=desires.FirstOrDefault();
-            if (decision.Plan.Count>0 && (urgent is null||urgent.Fact==decision.DesiredFact||urgent.Urgency<5))
+            var emergency=urgent is not null&&urgent.Fact is "fed" or "hydrated"&&urgent.Urgency>=3;
+            var urgentPhysiology=urgent is not null&&urgent.Fact is "fed" or "hydrated" or "warm" or "cooled"&&urgent.Urgency>=3;
+            if(decision.Plan.Count>0&&!emergency&&(urgent is null||urgent.Fact==decision.DesiredFact||(!urgentPhysiology&&urgent.Urgency<5)))
             {
                 decision.NextDecision=s.Clock.Tick+12;
                 continue;
             }
-            context=ContextBuilder.Create(session, actor);
+            var needsFarmSite=desires.Any(x=>x.Fact=="farm_plotted");
+            context=ContextBuilder.Create(session,actor,findBuildSite:true,findFarmSite:needsFarmSite);
             var options=session.Actions.All.Where(a=>!a.RequiresWork||context.CanWork).SelectMany(a=>a.Options(context)).ToList();
-            foreach (var option in options)
+            ApplyMemoryRisk(context,options);
+
+            if(emergency&&urgent?.Fact=="fed")
             {
-                var memory=context.Known.FirstOrDefault(o=>o.Entity==option.Step.Target&&option.Step.Target!=0);
-                if (memory is not null)option.Risk+=(1-memory.Confidence)*25;
+                var immediate=session.Actions.All.Where(a=>!a.RequiresWork).SelectMany(a=>a.Options(context)).ToList();
+                ApplyMemoryRisk(context,immediate);
+                var survival=session.Planner.Find(context,immediate,urgent);
+                if(survival is not null&&survival.Steps.Count>0)
+                {
+                    session.CancelPlan(actor);
+                    decision.Plan=survival.Steps;
+                    decision.Motive=urgent.Reason;
+                    decision.DesiredFact=urgent.Fact;
+                    decision.ChosenScore=urgent.Urgency/(1+survival.Cost*.012f);
+                    decision.Alternatives=[new(urgent.Reason,session.Actions[survival.Steps[0].Action].Label,
+                        decision.ChosenScore,survival.Cost,$"критический голод; шагов {survival.Steps.Count}")];
+                    decision.NextDecision=s.Clock.Tick+6;
+                    continue;
+                }
             }
+
             var candidates=new List<(DesiredState Desire, PlanResult Plan, float Score)>();
             var bestScore=float.NegativeInfinity;
             foreach (var desired in desires)
@@ -46,6 +65,13 @@ public sealed class DecisionSystem : ISimulationSystem
                 candidates.Add((desired, plan, score));
             }
             var ranked=candidates.OrderByDescending(x=>x.Score).ToArray();
+            if(emergency&&urgent is not null&&!ranked.Any(x=>x.Desire.Fact==urgent.Fact))
+            {
+                session.CancelPlan(actor);
+                Explore(session,actor,decision,"срочно ищет "+urgent.Reason,12);
+                decision.NextDecision=s.Clock.Tick+6;
+                continue;
+            }
             decision.Alternatives=ranked.Take(6).Select(x=>new DecisionScore(x.Desire.Reason, session.Actions[x.Plan.Steps[0].Action].Label, x.Score, x.Plan.Cost, $"важность {x.Desire.Urgency:F2}; шагов {x.Plan.Steps.Count}")).ToList();
             if (ranked.Length>0)
             {
@@ -61,12 +87,21 @@ public sealed class DecisionSystem : ISimulationSystem
                 decision.DesiredFact=best.Desire.Fact;
                 decision.ChosenScore=best.Score;
             }
-            else if (decision.Plan.Count==0)Explore(session, actor, decision);
+            else if(decision.Plan.Count==0)Explore(session,actor,decision);
             decision.NextDecision=s.Clock.Tick+12;
         }
         return processed;
     }
-    private static void Explore(SimulationSession session, int actor, DecisionComponent decision)
+    private static void ApplyMemoryRisk(PlanningContext context,List<ActionOption> options)
+    {
+        foreach(var option in options)
+        {
+            var memory=context.Known.FirstOrDefault(o=>o.Entity==option.Step.Target&&option.Step.Target!=0);
+            if(memory is not null)option.Risk+=(1-memory.Confidence)*25;
+        }
+    }
+
+    private static void Explore(SimulationSession session,int actor,DecisionComponent decision,string motive="исследует известный край местности",int radius=7)
     {
         var s=session.State;
         var e=s.Entities;
@@ -76,9 +111,10 @@ public sealed class DecisionSystem : ISimulationSystem
         var candidates=new List<GridPoint>();
         for (var i=0; i<12; i++)
         {
-            var p=center+new GridPoint(random.Range(-7, 8), random.Range(-7, 8));
+            var p=center+new GridPoint(random.Range(-radius,radius+1),random.Range(-radius,radius+1));
             // Exploration picks a visible frontier, never a hidden resource destination.
-            if (s.Map.Walkable(p)&&PerceptionSystem.LineOfSight(s.Map, center, p))candidates.Add(p);
+            if(s.Map.Walkable(p)&&PerceptionSystem.LineOfSight(s.Map,center,p)&&
+                (center.Distance(p)<=1||session.Pathfinder.Find(center,p,0,256) is not null))candidates.Add(p);
         }
         var destination=candidates.OrderBy(p=>memory.Visited.Count(old=>old.Distance(p)<5)).ThenByDescending(p=>p.Distance(center)).FirstOrDefault(center);
         if (destination!=center&&ActionRules.CanMove(s, actor))decision.Plan=[new()
@@ -92,7 +128,7 @@ public sealed class DecisionSystem : ISimulationSystem
         {
             Action="observe", Position=center, Duration=10
         }];
-        decision.Motive="исследует известный край местности";
+        decision.Motive=motive;
         decision.DesiredFact="explore";
         decision.ChosenScore=.01f;
     }

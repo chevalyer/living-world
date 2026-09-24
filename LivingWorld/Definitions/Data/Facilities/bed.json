@@ -1,0 +1,19 @@
+{
+  "id": "bed",
+  "name": "кровать",
+  "placement": "indoor",
+  "inputs": {
+    "plank": 4,
+    "fiber": 2
+  },
+  "capabilities": [
+    "sleep"
+  ],
+  "knowledge": "crafting",
+  "skill": "crafting",
+  "workMinutes": 55,
+  "restMultiplier": 1.7,
+  "shape": "bed",
+  "color": "#80664c",
+  "accent": "#d8c7a3"
+}
