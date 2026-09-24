@@ -753,6 +753,30 @@ public static class TestSuite
             Equal("explore",decision.DesiredFact);
             Assert(decision.Motive.StartsWith("срочно ищет",StringComparison.Ordinal),"survival need did not force exploration");
         });
+        Test("critical hunger abandons cooking for immediately available food", ()=>
+        {
+            var(s,id)=Fixture();
+            var storage=StorageService.Create(s,new(5,5),0);
+            for(var i=0;i<3;i++)
+            {
+                var grain=Give(s,id,"grain");
+                Assert(StorageService.Deposit(s,id,storage,grain),"food deposit failed");
+            }
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var needs=s.State.Entities.Get<NeedsComponent>(id);
+            needs.Hunger=.9f;
+            var decision=s.State.Entities.Get<DecisionComponent>(id);
+            decision.Plan=[new(){Action="craft",Argument="porridge_wheat",Position=new(5,5),Local=true,Duration=30}];
+            decision.DesiredFact="fed";
+            decision.ChosenScore=5;
+            while((s.State.Clock.Tick+id)%3!=0)s.State.Clock.Tick++;
+            new DecisionSystem().Update(s);
+            Equal("fed",decision.DesiredFact);
+            Assert(decision.Plan.Any(x=>x.Action=="take")&&decision.Plan.Any(x=>x.Action=="eat"),
+                "critical hunger did not choose stored food");
+            Assert(!decision.Plan.Any(x=>x.Action=="craft"),
+                "critical hunger kept a cooking plan despite ready food");
+        });
         Test("planner eats enough food instead of one token item", ()=>
         {
             var(s,id)=Fixture();
