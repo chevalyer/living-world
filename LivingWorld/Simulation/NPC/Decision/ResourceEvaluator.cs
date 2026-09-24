@@ -17,8 +17,7 @@ public sealed class ResourceEvaluator : ISituationEvaluator
         var storages=c.Storages().ToArray();
         if(storages.Length>0)
         {
-            var storedCalories=(int)storages.Sum(storage=>storage.Items.Sum(item=>
-                c.Definitions.Items.TryGetValue(item.Key,out var definition)?definition.Calories*item.Value:0));
+            var storedCalories=c.StoredFoodCalories();
             var household=1+(c.Family.Partner!=0?1:0)+c.Family.Children.Count;
             // Needs consume about 960 definition-calories per person/day. A 45-day household
             // reserve lets harvests bridge cold periods instead of being eaten only hand-to-mouth.
@@ -26,7 +25,8 @@ public sealed class ResourceEvaluator : ISituationEvaluator
             if(storedCalories<targetStoredCalories)
             {
                 var missing=1-storedCalories/(float)targetStoredCalories;
-                yield return new("food.stocked","запас пищи семьи на холодный период",.35f+.35f*missing);
+                // Keep the goal incremental so a bounded planner can make steady progress toward a large seasonal reserve.
+                yield return new("food.stocked","запас пищи семьи на холодный период",.35f+.35f*missing,storedCalories+1);
             }
         }
 
