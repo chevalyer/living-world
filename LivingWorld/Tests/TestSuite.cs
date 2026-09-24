@@ -789,6 +789,22 @@ public static class TestSuite
                     "farm planning selected hidden soil");
             }
         });
+        Test("household food stock is planned in calories", ()=>
+        {
+            var(s,id)=Fixture();
+            var storage=StorageService.Create(s,new(5,5),0);
+            var first=Give(s,id,"grain"); Assert(StorageService.Deposit(s,id,storage,first),"first food deposit failed");
+            var second=Give(s,id,"grain"); Assert(StorageService.Deposit(s,id,storage,second),"second food deposit failed");
+            PerceptionSystem.Observe(s,id,s.State.Entities.Get<MemoryComponent>(id));
+            var context=ContextBuilder.Create(s,id);
+            Equal(1300,context.InitialState().Get("food.stocked"));
+            var desire=new ResourceEvaluator().Evaluate(context).First(x=>x.Fact=="food.stocked");
+            Equal(1301,desire.Minimum);
+            Give(s,id,"grain");
+            context=ContextBuilder.Create(s,id);
+            var deposit=new DepositAction().Options(context).First(o=>o.Step.Target==storage&&o.Step.Argument=="grain");
+            Equal(650,deposit.Effects.Single(x=>x.Fact=="food.stocked").Amount);
+        });
         Test("storage serves fresh food and cleanup destroys spoiled food", ()=>
         {
             var(s,id)=Fixture();
