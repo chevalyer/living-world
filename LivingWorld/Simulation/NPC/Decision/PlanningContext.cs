@@ -43,6 +43,8 @@ public sealed class PlanningContext
     public IEnumerable<Observation> Storages()=>Known.Where(o=>o.UnreachableUntil<=Tick&&
         (o.Kind=="storage"||o.Kind=="facility"&&o.Capabilities.Contains("storage",StringComparer.Ordinal))&&FacilityAccessible(o))
         .OrderByDescending(o=>o.Kind=="facility").ThenBy(o=>o.Position.Distance(Position)).ThenBy(o=>o.Entity).Take(10);
+    public int StoredFoodCalories()=>(int)MathF.Round(Storages().Sum(storage=>storage.Items.Sum(item=>
+        Definitions.Items.TryGetValue(item.Key,out var definition)&&definition.Calories>0?definition.Calories*item.Value:0)));
     public PlanningState InitialState()
     {
         var state=new PlanningState
@@ -62,6 +64,7 @@ public sealed class PlanningContext
                 if(item.Durability>0)state.Facts["tool:"+tool.Key]=Math.Max(state.Get("tool:"+tool.Key),Math.Max(1,(int)MathF.Floor(item.Durability/2)));
         }
         state.Facts["food.reserve"]=reserve;
+        state.Facts["food.stocked"]=StoredFoodCalories();
         foreach (var o in Known.Where(o=>o.Quantity>0))state.Facts["source:"+o.Entity]=o.Quantity;
         foreach (var storage in Storages())foreach (var item in storage.Items)state.Facts["stock:"+storage.Entity+":"+item.Key]=item.Value;
         foreach(var facility in Known.Where(o=>o.Kind=="facility"))
